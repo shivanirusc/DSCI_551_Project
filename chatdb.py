@@ -27,7 +27,14 @@ try:
     st.write("NLTK tokenization is ready.")
 except LookupError as e:
     st.write(f"Error: {e}. Please ensure resources are downloaded.")
-    
+
+try:
+    sample_text = "Test this tokenizer."
+    tokens = word_tokenize(sample_text)
+    st.write("Tokenizer works. Sample tokens:", tokens)
+except LookupError as e:
+    st.write(f"Tokenizer error: {e}.")
+
 # Initialize MongoDB
 mongo_client = MongoClient("mongodb://localhost:27017/")
 mongo_db = mongo_client["chatdb"]
