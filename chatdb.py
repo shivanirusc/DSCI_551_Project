@@ -41,16 +41,16 @@ def make_sql_db(df, csv_name):
 
 # NLP Processing Function
 def process_input(user_input):
+    # Tokenize the input after downloading NLTK resources
+    tokens = word_tokenize(user_input.lower())
     stop_words = set(stopwords.words("english"))
     lemmatizer = WordNetLemmatizer()
 
-    # Tokenization
-    tokens = word_tokenize(user_input.lower())
-
-    # Remove stopwords and lemmatize
-    filtered_tokens = [lemmatizer.lemmatize(word) for word in tokens if word not in stop_words]
-    return filtered_tokens
-
+    # Filter and lemmatize tokens
+    return [
+        lemmatizer.lemmatize(token)
+        for token in tokens if token not in stop_words
+    ]
 # Function to generate SQL queries based on user input
 def generate_sql_query(processed_tokens, column_names, table_name):
     quantitative = []
