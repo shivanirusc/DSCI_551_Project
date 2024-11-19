@@ -28,12 +28,12 @@ try:
 except LookupError as e:
     st.write(f"Error: {e}. Please ensure resources are downloaded.")
 
-try:
-    sample_text = "Test this tokenizer."
-    tokens = word_tokenize(sample_text)
-    st.write("Tokenizer works. Sample tokens:", tokens)
-except LookupError as e:
-    st.write(f"Tokenizer error: {e}.")
+def basic_tokenizer(text):
+    return text.lower().split()
+
+tokens = basic_tokenizer("Find the total sales amount by product category")
+st.write("Tokens:", tokens)
+
 
 # Initialize MongoDB
 mongo_client = MongoClient("mongodb://localhost:27017/")
