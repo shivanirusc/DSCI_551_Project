@@ -77,16 +77,14 @@ def generate_sql_query(processed_tokens, column_names, table_name):
         else:
             quantitative.append(col)
 
-    # Explicitly handle "sales amount" and "product category"
-    sales_column = "sales_amount"  # Column name for sales amount
-    category_column = "product_category"  # Column name for product category
-
-    # Check if "total" or "sum" is mentioned in the processed tokens
+    # Example query pattern: "total <A> by <B>"
     if "total" in processed_tokens or "sum" in processed_tokens:
-        if sales_column in column_names and category_column in column_names:
-            sql_query = f"SELECT {category_column}, SUM({sales_column}) as total_sales_amount FROM {table_name} GROUP BY {category_column}"
-            nat_lang_query = f"Total sales amount by product category"
-            return nat_lang_query, sql_query
+        for quant in quantitative:
+            for cat in categorical:
+                if quant in processed_tokens and cat in processed_tokens:
+                    sql_query = f"SELECT {cat}, SUM({quant}) as total_{quant} FROM {table_name} GROUP BY {cat}"
+                    nat_lang_query = f"Total {quant} by {cat}"
+                    return nat_lang_query, sql_query
 
     # If no specific match, provide a generic query
     return "Query could not be interpreted. Please try rephrasing.", None
