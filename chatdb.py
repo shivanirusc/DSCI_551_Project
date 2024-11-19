@@ -8,20 +8,25 @@ from nltk.stem import WordNetLemmatizer
 from pymongo import MongoClient
 import os
 
-# Debugging download process
-try:
-    nltk.download('punkt')
-    nltk.download('stopwords')
-    nltk.download('wordnet')
-    st.write("NLTK resources downloaded successfully.")
-except Exception as e:
-    st.write(f"Error downloading NLTK resources: {e}")
+# Define a function to safely download required NLTK resources
+def download_nltk_resources():
+    try:
+        nltk.download('punkt')  # Required for tokenization
+        nltk.download('stopwords')  # Optional, for stopword removal
+        nltk.download('wordnet')  # Optional, for lemmatization
+        st.write("NLTK resources downloaded successfully.")
+    except Exception as e:
+        st.write(f"Error downloading NLTK resources: {e}")
 
+# Call the download function
+download_nltk_resources()
+
+# Now ensure tokenization works
 try:
-    nltk_data_path = nltk.data.path
-    st.write(f"NLTK data paths: {nltk_data_path}")
-except Exception as e:
-    st.write(f"Error checking NLTK data paths: {e}")
+    from nltk.tokenize import word_tokenize
+    st.write("NLTK tokenization is ready.")
+except LookupError as e:
+    st.write(f"Error: {e}. Please ensure resources are downloaded.")
     
 # Initialize MongoDB
 mongo_client = MongoClient("mongodb://localhost:27017/")
