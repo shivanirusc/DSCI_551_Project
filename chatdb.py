@@ -2,16 +2,17 @@ import streamlit as st
 import pandas as pd
 import sqlite3
 import nltk
-from nltk.tokenize import word_tokenize
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
-from pymongo import MongoClient
-import os
 
 # Download necessary NLTK data
 nltk.download('punkt')
 nltk.download('stopwords')
 nltk.download('wordnet')
+
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from pymongo import MongoClient
+import os
 
 # Initialize MongoDB
 mongo_client = MongoClient("mongodb://localhost:27017/")
