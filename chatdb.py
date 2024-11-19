@@ -17,6 +17,12 @@ try:
 except Exception as e:
     st.write(f"Error downloading NLTK resources: {e}")
 
+try:
+    nltk_data_path = nltk.data.path
+    st.write(f"NLTK data paths: {nltk_data_path}")
+except Exception as e:
+    st.write(f"Error checking NLTK data paths: {e}")
+    
 # Initialize MongoDB
 mongo_client = MongoClient("mongodb://localhost:27017/")
 mongo_db = mongo_client["chatdb"]
