@@ -8,12 +8,12 @@ from nltk.stem import WordNetLemmatizer
 from pymongo import MongoClient
 import os
 
-# Define a function to safely download required NLTK resources
+# Download NLTK resources
 def download_nltk_resources():
     try:
         nltk.download('punkt')  # Required for tokenization
-        nltk.download('stopwords')  # Optional, for stopword removal
-        nltk.download('wordnet')  # Optional, for lemmatization
+        nltk.download('stopwords')  # For stopword removal
+        nltk.download('wordnet')  # For lemmatization
         st.write("NLTK resources downloaded successfully.")
     except Exception as e:
         st.write(f"Error downloading NLTK resources: {e}")
@@ -21,19 +21,9 @@ def download_nltk_resources():
 # Call the download function
 download_nltk_resources()
 
-# Now ensure tokenization works
-try:
-    from nltk.tokenize import word_tokenize
-    st.write("NLTK tokenization is ready.")
-except LookupError as e:
-    st.write(f"Error: {e}. Please ensure resources are downloaded.")
-
+# Define the basic tokenizer (splitting on spaces and lowering text)
 def basic_tokenizer(text):
     return text.lower().split()
-
-tokens = basic_tokenizer("Find the total sales amount by product category")
-st.write("Tokens:", tokens)
-
 
 # Initialize MongoDB
 mongo_client = MongoClient("mongodb://localhost:27017/")
@@ -60,18 +50,21 @@ def make_sql_db(df, csv_name):
     sqldb_list.append(table_name)
     return df.columns.tolist()
 
-# NLP Processing Function
+# NLP Processing Function using both basic tokenizer and NLTK
 def process_input(user_input):
-    # Tokenize the input after downloading NLTK resources
-    tokens = word_tokenize(user_input.lower())
+    # Step 1: Tokenize using basic_tokenizer
+    tokens = basic_tokenizer(user_input)
+    
+    # Step 2: Remove stopwords using NLTK stopwords
     stop_words = set(stopwords.words("english"))
+    tokens = [token for token in tokens if token not in stop_words]
+    
+    # Step 3: Lemmatize using NLTK WordNetLemmatizer
     lemmatizer = WordNetLemmatizer()
+    tokens = [lemmatizer.lemmatize(token) for token in tokens]
+    
+    return tokens
 
-    # Filter and lemmatize tokens
-    return [
-        lemmatizer.lemmatize(token)
-        for token in tokens if token not in stop_words
-    ]
 # Function to generate SQL queries based on user input
 def generate_sql_query(processed_tokens, column_names, table_name):
     quantitative = []
