@@ -67,29 +67,46 @@ def process_input(user_input):
 
 # Function to generate SQL queries based on user input
 def generate_sql_query(processed_tokens, column_names, table_name):
-    quantitative = []
-    categorical = []
+    # Define sets of keywords for different types of queries
+    aggregate_keywords = {"total", "sum", "average", "mean", "max", "min"}
+    group_keywords = {"group", "category", "type"}
+    filter_keywords = {"where", "filter", "equal", "greater", "less", "between", "in"}
 
-    # Identify potential categorical and quantitative columns
-    for col in column_names:
-        if col.lower().endswith(('id', 'name', 'type', 'category', 'group')):
-            categorical.append(col)
-        else:
-            quantitative.append(col)
+    # Identify potential columns for aggregation and grouping
+    aggregate_columns = [col for col in column_names if col.lower() in processed_tokens]
+    group_columns = [col for col in column_names if col.lower() in processed_tokens and col.lower() in group_keywords]
 
-    # Explicitly handle "sales amount" and "product category"
-    sales_column = "sales_amount"  # Column name for sales amount
-    category_column = "product_category"  # Column name for product category
+    # Start building the query
+    select_clause = "SELECT *"
+    group_by_clause = ""
+    having_clause = ""
+    where_clause = ""
 
-    # Check if "total" or "sum" is mentioned in the processed tokens
-    if "total" in processed_tokens or "sum" in processed_tokens:
-        if sales_column in column_names and category_column in column_names:
-            sql_query = f"SELECT {category_column}, SUM({sales_column}) as total_sales_amount FROM {table_name} GROUP BY {category_column}"
-            nat_lang_query = f"Total sales amount by product category"
-            return nat_lang_query, sql_query
+    # Handle aggregation
+    if any(keyword in processed_tokens for keyword in aggregate_keywords):
+        aggregate_column = None
+        for token in processed_tokens:
+            if token in column_names:
+                aggregate_column = token
+                break
+        if aggregate_column:
+            select_clause = f"SELECT {aggregate_column}, SUM({aggregate_column})"
+            if group_columns:
+                group_by_clause = f"GROUP BY {', '.join(group_columns)}"
 
-    # If no specific match, provide a generic query
-    return "Query could not be interpreted. Please try rephrasing.", None
+    # Handle filtering (where clause)
+    if any(keyword in processed_tokens for keyword in filter_keywords):
+        where_clause = "WHERE "
+        if "greater" in processed_tokens:
+            where_clause += f"{column_names[0]} > {processed_tokens[-1]}"  # Example for greater than filter
+        if "less" in processed_tokens:
+            where_clause += f"{column_names[0]} < {processed_tokens[-1]}"  # Example for less than filter
+
+    # Combine all parts
+    sql_query = f"{select_clause} FROM {table_name} {group_by_clause} {having_clause} {where_clause}"
+    nat_lang_query = f"Query for {', '.join(processed_tokens)}"
+
+    return nat_lang_query, sql_query
 
 # Streamlit app setup
 st.title("ChatDB: Interactive Query Assistant")
