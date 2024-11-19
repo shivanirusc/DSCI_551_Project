@@ -8,10 +8,14 @@ from nltk.stem import WordNetLemmatizer
 from pymongo import MongoClient
 import os
 
-# Download necessary NLTK data
-nltk.download('punkt')
-nltk.download('stopwords')
-nltk.download('wordnet')
+# Debugging download process
+try:
+    nltk.download('punkt')
+    nltk.download('stopwords')
+    nltk.download('wordnet')
+    st.write("NLTK resources downloaded successfully.")
+except Exception as e:
+    st.write(f"Error downloading NLTK resources: {e}")
 
 # Initialize MongoDB
 mongo_client = MongoClient("mongodb://localhost:27017/")
