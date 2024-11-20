@@ -44,11 +44,11 @@ def store_in_mongodb(data, json_name):
 
 # Function to store data in SQLite
 def make_sql_db(df, csv_name):
-    conn = sqlite3.connect(":memory:")  # Use in-memory SQLite database
+    conn = sqlite3.connect("chatdb_sql.db")  # SQLite database file
     table_name = csv_name[:-4]  # Remove '.csv' from filename
     df.to_sql(table_name, conn, if_exists='replace', index=False)
     sqldb_list.append(table_name)
-    return df.columns.tolist(), conn
+    return df.columns.tolist()
 
 # NLP Processing Function using both basic tokenizer and NLTK
 def process_input(user_input):
@@ -89,16 +89,6 @@ def generate_sql_query(processed_tokens, column_names, table_name):
     # If no specific match, provide a generic query
     return "Query could not be interpreted. Please try rephrasing.", None
 
-# Function to execute SQL query on SQLite DataFrame
-def execute_sql_query(conn, sql_query):
-    return pd.read_sql_query(sql_query, conn)
-
-# Function to execute MongoDB aggregation query
-def execute_mongo_query(table_name, aggregation_query):
-    collection = mongo_db[table_name]
-    result = list(collection.aggregate(aggregation_query))
-    return pd.DataFrame(result)
-
 # Streamlit app setup
 st.title("ChatDB: Interactive Query Assistant")
 st.write(
@@ -109,14 +99,13 @@ st.write(
 file = st.file_uploader("Choose a CSV or JSON file to populate your database:", type=["csv", "json"])
 uploaded_columns = []
 table_name = ""
-conn = None  # Database connection will be initialized after file upload
 
 if file:
     filename = file.name
     if allowed_file(filename):
         if filename.endswith('.csv'):
             data = pd.read_csv(file)
-            uploaded_columns, conn = make_sql_db(data, filename)
+            uploaded_columns = make_sql_db(data, filename)
             table_name = filename[:-4]
         else:
             data = pd.read_json(file)
@@ -139,22 +128,25 @@ if user_input and uploaded_columns:
     if sql_query:
         st.write(f"**Natural Language Query:** {nat_lang_query}")
         st.code(sql_query)
-        
-        # Execute the SQL query if it's for CSV (SQLite)
-        if filename.endswith('.csv') and conn:
-            query_result = execute_sql_query(conn, sql_query)
-            st.write(f"**Query Result:**")
-            st.write(query_result)
-        
-        # Execute MongoDB query if it's for JSON
-        elif filename.endswith('.json'):
-            aggregation_query = [
-                {"$group": {"_id": f"${uploaded_columns[1]}", "total_salary": {"$sum": f"${uploaded_columns[0]}"}}}
-            ]  # Assuming the first column is salary and the second is department
-            mongo_result = execute_mongo_query(table_name, aggregation_query)
-            st.write(f"**Query Result:**")
-            st.write(mongo_result)
-        
+
+        # Execute the query on SQLite database
+        if filename.endswith('.csv'):
+            conn = sqlite3.connect("chatdb_sql.db")
+            result = pd.read_sql_query(sql_query, conn)
+            st.write("**Query Result from SQLite:**")
+            st.dataframe(result)
+
+        # Execute the query on MongoDB database
+        if filename.endswith('.json'):
+            collection = mongo_db[table_name]
+            pipeline = [
+                {"$group": {"_id": f"${processed_tokens[1]}", f"total_{processed_tokens[3]}": {"$sum": f"${processed_tokens[3]}"}}}
+            ]
+            result = list(collection.aggregate(pipeline))
+            result_df = pd.DataFrame(result)
+            st.write("**Query Result from MongoDB:**")
+            st.dataframe(result_df)
+
     else:
         st.write(nat_lang_query)
 elif user_input:
