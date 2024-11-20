@@ -66,27 +66,75 @@ def process_input(user_input):
     return tokens
 
 # Function to generate SQL queries based on user input
-def generate_sql_query(processed_tokens, column_names, table_name):
-    quantitative = []
-    categorical = []
+def generate_sql_query(user_input, column_names, table_name):
+    # Clean and tokenize the user input
+    tokens = process_input(user_input)
+    
+    # Map the tokens to actual column names
+    mapped_columns = [col for col in column_names if col.lower() in tokens]
 
-    # Identify potential categorical and quantitative columns
-    for col in column_names:
-        if col.lower().endswith(('id', 'name', 'type', 'category', 'group')):
-            categorical.append(col)
-        else:
-            quantitative.append(col)
+    if not mapped_columns:
+        return "No matching columns found in your input. Please try again.", None
+
+    # Identify quantitative and categorical columns
+    quantitative_columns = [col for col in mapped_columns if col not in ['category', 'material', 'color', 'location', 'season', 'store_type', 'brand']]
+    categorical_columns = [col for col in mapped_columns if col in ['category', 'material', 'color', 'location', 'season', 'store_type', 'brand']]
 
     # Example query pattern: "total <A> by <B>"
-    if "total" in processed_tokens or "sum" in processed_tokens:
-        for quant in quantitative:
-            for cat in categorical:
-                if quant in processed_tokens and cat in processed_tokens:
+    if "total" in tokens or "sum" in tokens:
+        for quant in quantitative_columns:
+            for cat in categorical_columns:
+                if quant in tokens and cat in tokens:
                     sql_query = f"SELECT {cat}, SUM({quant}) as total_{quant} FROM {table_name} GROUP BY {cat}"
                     nat_lang_query = f"Total {quant} by {cat}"
                     return nat_lang_query, sql_query
 
-    # If no specific match, provide a generic query
+    # Example pattern: "average <A> by <B>"
+    if "average" in tokens or "avg" in tokens:
+        for quant in quantitative_columns:
+            for cat in categorical_columns:
+                if quant in tokens and cat in tokens:
+                    sql_query = f"SELECT {cat}, AVG({quant}) as average_{quant} FROM {table_name} GROUP BY {cat}"
+                    nat_lang_query = f"Average {quant} by {cat}"
+                    return nat_lang_query, sql_query
+
+    # Example pattern: "maximum <A> by <B>"
+    if "maximum" in tokens or "max" in tokens:
+        for quant in quantitative_columns:
+            for cat in categorical_columns:
+                if quant in tokens and cat in tokens:
+                    sql_query = f"SELECT {cat}, MAX({quant}) as max_{quant} FROM {table_name} GROUP BY {cat}"
+                    nat_lang_query = f"Maximum {quant} by {cat}"
+                    return nat_lang_query, sql_query
+
+    # Example pattern: "count of <A> by <B>"
+    if "count" in tokens or "total" in tokens:
+        for cat in categorical_columns:
+            if cat in tokens:
+                sql_query = f"SELECT {cat}, COUNT(*) as count_{cat} FROM {table_name} GROUP BY {cat}"
+                nat_lang_query = f"Count of {cat}"
+                return nat_lang_query, sql_query
+
+    # Example pattern: "total <A> where <B>"
+    if "where" in tokens:
+        for quant in quantitative_columns:
+            if quant in tokens:
+                condition = ' '.join(tokens[tokens.index("where")+1:])
+                sql_query = f"SELECT SUM({quant}) as total_{quant} FROM {table_name} WHERE {condition}"
+                nat_lang_query = f"Total {quant} where {condition}"
+                return nat_lang_query, sql_query
+
+    # Example pattern: "top N <A> by <B>"
+    if "top" in tokens and "by" in tokens:
+        for quant in quantitative_columns:
+            for cat in categorical_columns:
+                if quant in tokens and cat in tokens:
+                    n_value = 5  # Default top 5, could be extracted from input if specified
+                    sql_query = f"SELECT {cat}, SUM({quant}) as total_{quant} FROM {table_name} GROUP BY {cat} ORDER BY total_{quant} DESC LIMIT {n_value}"
+                    nat_lang_query = f"Top {n_value} {cat} by {quant}"
+                    return nat_lang_query, sql_query
+
+    # If no specific match, return a generic query
     return "Query could not be interpreted. Please try rephrasing.", None
 
 # Streamlit app setup
@@ -122,8 +170,7 @@ st.write("**Chat with ChatDB:**")
 user_input = st.text_input("Type your query here:")
 
 if user_input and uploaded_columns:
-    processed_tokens = process_input(user_input)
-    nat_lang_query, sql_query = generate_sql_query(processed_tokens, uploaded_columns, table_name)
+    nat_lang_query, sql_query = generate_sql_query(user_input, uploaded_columns, table_name)
 
     if sql_query:
         st.write(f"**Natural Language Query:** {nat_lang_query}")
