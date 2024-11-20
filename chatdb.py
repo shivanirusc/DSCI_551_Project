@@ -1,12 +1,14 @@
+import streamlit as st
 import pandas as pd
 import sqlite3
+from pymongo import MongoClient
 import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
-import streamlit as st
+import os
 
-# Function to download NLTK resources
+# Download NLTK resources
 def download_nltk_resources():
     try:
         nltk.download('punkt')  # Required for tokenization
@@ -19,31 +21,31 @@ def download_nltk_resources():
 # Call the download function
 download_nltk_resources()
 
-# Function to clean and tokenize input text
-def clean_and_tokenize(input_text):
-    # Convert to lowercase and tokenize
-    input_text = input_text.lower()
-    tokens = word_tokenize(input_text)
-    return tokens
+# Define the basic tokenizer (splitting on spaces and lowering text)
+def basic_tokenizer(text):
+    return text.lower().split()
 
-# Function to remove stopwords
+# Function to clean and tokenize the input text
+def clean_and_tokenize(user_input):
+    return word_tokenize(user_input)
+
+# Function to remove stopwords from the tokenized input
 def remove_stopwords(tokens):
     stop_words = set(stopwords.words("english"))
     return [token for token in tokens if token not in stop_words]
 
-# Function to lemmatize tokens
+# Function to lemmatize the tokens
 def lemmatize_tokens(tokens):
     lemmatizer = WordNetLemmatizer()
     return [lemmatizer.lemmatize(token) for token in tokens]
 
-# Function to map tokens to column names dynamically
+# Function to map the tokens to the actual column names in the dataset
 def map_tokens_to_columns(tokens, column_names):
     mapped_columns = []
     for token in tokens:
-        for col in column_names:
-            if token in col.lower():  # Compare in lowercase to avoid case sensitivity issues
-                mapped_columns.append(col)
-                break
+        for column in column_names:
+            if token in column.lower():
+                mapped_columns.append(column)
     return mapped_columns
 
 # Function to generate SQL query based on user input
@@ -72,6 +74,51 @@ def generate_sql_query(user_input, column_names, table_name):
                     nat_lang_query = f"Total {quant} by {cat}"
                     return nat_lang_query, sql_query
 
+    # Example pattern: "average <A> by <B>"
+    if "average" in tokens or "avg" in tokens:
+        for quant in quantitative_columns:
+            for cat in categorical_columns:
+                if quant in tokens and cat in tokens:
+                    sql_query = f"SELECT {cat}, AVG({quant}) as average_{quant} FROM {table_name} GROUP BY {cat}"
+                    nat_lang_query = f"Average {quant} by {cat}"
+                    return nat_lang_query, sql_query
+
+    # Example pattern: "maximum <A> by <B>"
+    if "maximum" in tokens or "max" in tokens:
+        for quant in quantitative_columns:
+            for cat in categorical_columns:
+                if quant in tokens and cat in tokens:
+                    sql_query = f"SELECT {cat}, MAX({quant}) as max_{quant} FROM {table_name} GROUP BY {cat}"
+                    nat_lang_query = f"Maximum {quant} by {cat}"
+                    return nat_lang_query, sql_query
+
+    # Example pattern: "count of <A> by <B>"
+    if "count" in tokens or "total" in tokens:
+        for cat in categorical_columns:
+            if cat in tokens:
+                sql_query = f"SELECT {cat}, COUNT(*) as count_{cat} FROM {table_name} GROUP BY {cat}"
+                nat_lang_query = f"Count of {cat}"
+                return nat_lang_query, sql_query
+
+    # Example pattern: "total <A> where <B>"
+    if "where" in tokens:
+        for quant in quantitative_columns:
+            if quant in tokens:
+                condition = ' '.join(tokens[tokens.index("where")+1:])
+                sql_query = f"SELECT SUM({quant}) as total_{quant} FROM {table_name} WHERE {condition}"
+                nat_lang_query = f"Total {quant} where {condition}"
+                return nat_lang_query, sql_query
+
+    # Example pattern: "top N <A> by <B>"
+    if "top" in tokens and "by" in tokens:
+        for quant in quantitative_columns:
+            for cat in categorical_columns:
+                if quant in tokens and cat in tokens:
+                    n_value = 5  # Default top 5, could be extracted from input if specified
+                    sql_query = f"SELECT {cat}, SUM({quant}) as total_{quant} FROM {table_name} GROUP BY {cat} ORDER BY total_{quant} DESC LIMIT {n_value}"
+                    nat_lang_query = f"Top {n_value} {cat} by {quant}"
+                    return nat_lang_query, sql_query
+
     # If no specific match, return a generic query
     return "Query could not be interpreted. Please try rephrasing.", None
 
@@ -86,14 +133,14 @@ file = st.file_uploader("Choose a CSV or JSON file to populate your database:", 
 uploaded_columns = []
 table_name = ""
 
-# Handle file upload and column extraction
 if file:
     filename = file.name
     if filename.endswith('.csv'):
         data = pd.read_csv(file)
         uploaded_columns = data.columns.tolist()
         table_name = filename[:-4]
-        # Store data in SQLite (or MongoDB if needed)
+        
+        # Save to SQLite database
         conn = sqlite3.connect("chatdb_sql.db")
         data.to_sql(table_name, conn, if_exists='replace', index=False)
         st.write(f"**Uploaded Successfully!** Columns in your data: {uploaded_columns}")
@@ -101,7 +148,13 @@ if file:
         data = pd.read_json(file)
         uploaded_columns = data.columns.tolist()
         table_name = filename[:-5]
-        # Store data in MongoDB (or SQLite if needed)
+
+        # Save to MongoDB database
+        mongo_client = MongoClient("mongodb://localhost:27017/")
+        mongo_db = mongo_client["chatdb"]
+        collection = mongo_db[table_name]
+        collection.drop()
+        collection.insert_many(data.to_dict(orient='records'))
         st.write(f"**Uploaded Successfully!** Columns in your data: {uploaded_columns}")
     else:
         st.write("**Unsupported file type. Please upload a CSV or JSON file.**")
@@ -118,11 +171,23 @@ if user_input and uploaded_columns:
         st.write(f"**Natural Language Query:** {nat_lang_query}")
         st.code(sql_query)
 
-        # Execute the generated SQL query on the dataset (SQLite example)
-        conn = sqlite3.connect("chatdb_sql.db")
-        result = pd.read_sql_query(sql_query, conn)
-        st.write(f"**Query Result:**")
-        st.dataframe(result)
+        # Execute the query on SQLite database
+        if filename.endswith('.csv'):
+            conn = sqlite3.connect("chatdb_sql.db")
+            result = pd.read_sql_query(sql_query, conn)
+            st.write("**Query Result from SQLite:**")
+            st.dataframe(result)
+
+        # Execute the query on MongoDB database
+        if filename.endswith('.json'):
+            collection = mongo_db[table_name]
+            pipeline = [
+                {"$group": {"_id": f"${uploaded_columns[1]}", f"total_{uploaded_columns[3]}": {"$sum": f"${uploaded_columns[3]}"}}}
+            ]
+            result = list(collection.aggregate(pipeline))
+            result_df = pd.DataFrame(result)
+            st.write("**Query Result from MongoDB:**")
+            st.dataframe(result_df)
     else:
         st.write(nat_lang_query)
 elif user_input:
