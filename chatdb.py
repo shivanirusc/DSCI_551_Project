@@ -252,7 +252,6 @@ def download_nltk_resources():
         nltk.download('punkt')  # Required for tokenization
         nltk.download('stopwords')  # For stopword removal
         nltk.download('wordnet')  # For lemmatization
-        st.write("NLTK resources downloaded successfully.")
     except Exception as e:
         st.write(f"Error downloading NLTK resources: {e}")
 
