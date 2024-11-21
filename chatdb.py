@@ -310,7 +310,7 @@ def categorize_columns(dataframe):
     return categorical, quantitative
 
 # Function to generate SQL queries based on user input
-def generate_sql_query(user_input, column_names, table_name):
+def generate_sql_query(user_input, column_names, table_name, dataframe):
     # Clean and tokenize the user input
     tokens = process_input(user_input)
     
@@ -440,7 +440,7 @@ if user_input and uploaded_columns:
         
             
     else:
-        nat_lang_query, sql_query = generate_sql_query(user_input, uploaded_columns, table_name)
+        nat_lang_query, sql_query = generate_sql_query(user_input, uploaded_columns, table_name, data)
 
         if sql_query:
             st.write(f"**Natural Language Query:** {nat_lang_query}")
