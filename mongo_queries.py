@@ -13,6 +13,7 @@ import json
 # some learning notes as I have been going:
 # don't cover cases where an attribute is a list or dict. These could be queries all on their own. This could be something we add for 
 # complexity
+# can add a conditional to each generate function to do order by, DESC, ASC, etc. 
 
 try:
     _create_unverified_https_context = ssl._create_unverified_context
@@ -181,7 +182,7 @@ def gen_total_query(cat_cols, quant_cols, collectionName):
                                          {"$project": {f"{random_cat}": "$_id", random_quant_var: 1, "_id": 0}},{"$limit": 5}])
     query = [{"$group": {"_id": f"${random_cat}", random_quant_var: {"$sum": f"${random_quant}"}}}, 
                                          {"$project": {f"{random_cat}": "$_id", random_quant_var: 1, "_id": 0}},{"$limit": 5}]
-    query_string = ', '.join(json.dumps(part) for part in query)
+    query_string = f"collection.aggregate({json.dumps(query)})"
     # Extract headers correctly by getting the keys from the first row
     data = list(query_result)
     headers = list(data[0].keys())[::-1] if data else []
@@ -218,7 +219,7 @@ def gen_average_query(cat_cols, quant_cols, collectionName):
                                          {"$project": {f"{random_cat}": "$_id", random_quant_var: 1, "_id": 0}},{"$limit": 5}])
     query = [{"$group": {"_id": f"${random_cat}", random_quant_var: {"$avg": f"${random_quant}"}}}, 
                                          {"$project": {f"{random_cat}": "$_id", random_quant_var: 1, "_id": 0}},{"$limit": 5}]
-    query_string = ', '.join(json.dumps(part) for part in query)
+    query_string = f"collection.aggregate({json.dumps(query)})"
     data = list(query_result)
     headers = list(data[0].keys())[::-1] if data else []
     rows = [[row[h] for h in headers] for row in data]
@@ -245,7 +246,7 @@ def gen_counts_query(cat_cols, collectionName):
                                          {"$project": {f"{random_cat}": "$_id", "Count": 1, "_id": 0}},{"$limit": 5}])
     query = [{"$group": {"_id": f"${random_cat}", "Count": {"$sum": 1}}}, 
                                          {"$project": {f"{random_cat}": "$_id", "Count": 1, "_id": 0}},{"$limit": 5}]
-    query_string = ', '.join(json.dumps(part) for part in query)
+    query_string = f"collection.aggregate({json.dumps(query)})"
     data = list(query_result)
     headers = list(data[0].keys())[::-1] if data else []
     # Ensure rows are aligned with reversed headers
@@ -282,18 +283,60 @@ def gen_gtlt_query_group(cat_cols, quant_cols, range_, ineq, collectionName):
     random_quant = random.choice(quant_cols)
     random_quant_var = f"Average {random_quant}"
     random_cat = random.choice(cat_cols)
-    gt_val = random.randint(int(range_[random_quant][0]), int(range_[random_quant][1]))
-    nat_language = f"{random_cat} with {random_quant_var} {ineq_str} than {gt_val}"
+    ineq_val = random.randint(int(range_[random_quant][0]), int(range_[random_quant][1]))
+    nat_language = f"{random_cat} with {random_quant_var} {ineq_str} than {ineq_val}"
     collection = mongo_db[collectionName]
     query_result = collection.aggregate([{"$group": {"_id": f"${random_cat}", random_quant_var: {"$avg": f"${random_quant}"}}}, 
-                                         {"$match": {random_quant_var: {f"${ineq}": gt_val}}},
+                                         {"$match": {random_quant_var: {f"${ineq}": ineq_val}}},
                                          {"$project": {f"{random_cat}": "$_id", random_quant_var: 1, "_id": 0}}
                                          ,{"$limit": 5}])
     query = [{"$group": {"_id": f"${random_cat}", random_quant_var: {"$avg": f"${random_quant}"}}}, 
-                                         {"$match": {random_quant_var: {f"${ineq}": gt_val}}},
+                                         {"$match": {random_quant_var: {f"${ineq}": ineq_val}}},
                                          {"$project": {f"{random_cat}": "$_id", random_quant_var: 1, "_id": 0}}
                                          ,{"$limit": 5}]
-    query_string = ', '.join(json.dumps(part) for part in query)
+    query_string = f"collection.aggregate({json.dumps(query)})"
+    data = list(query_result)
+    headers = list(data[0].keys())[::-1] if data else []
+    # Ensure rows are aligned with reversed headers
+    rows = [[row[h] for h in headers] for row in data]
+    print(nat_language)
+    print(query_string)
+    print("Below is the result of the query:")
+    print(tabulate(rows, headers=headers, tablefmt="grid"))
+
+def gen_gtlt_query_unique(unique_cols, quant_cols, range_, ineq, collectionName):
+    """Generates a query <B> with  <A> Greater/Less than X, where A is a random quantitative variable and B is a 
+        random categorical variable with unique values, and X is a random value within the range of the random quantitative column, and
+        prints this query in natural language and mongo format, and prints the head(5) of the output
+
+    Parameters
+    ----------
+    cat_cols : list
+        The dataframe that will be ingested to either mongodb or sqlite
+    quant_cols : list
+        List of the quantitative variable names
+    range_ : dictionary
+         Dictionary where the key is the quantitative column and the value is a tuple containing the (min, max) value for said column
+    ineq : str
+        Name of the ineq that we are using (gt or lt)
+    collectionName : str
+        Name of the collection we are currently querying on
+    """
+    if ineq == 'gt':
+        ineq_str = "greater"
+    elif ineq == 'lt':
+         ineq_str = "less"
+    else:
+        ineq_str = "unknown"
+    random_quant = random.choice(quant_cols)
+    random_unique = random.choice(unique_cols)
+    ineq_val = random.randint(int(range_[random_quant][0]), int(range_[random_quant][1]))
+    nat_language = f"{random_unique} with {random_quant} {ineq_str} than {ineq_val}"
+    collection = mongo_db[collectionName]
+    query_result = collection.find({f"{random_quant}": {f"${ineq}": ineq_val}},
+                                   {f"{random_unique}": 1, f"{random_quant}": 1, "_id": 0}).limit(5)
+    query = [{f"{random_quant}": {f"${ineq}": ineq_val}}, {f"{random_unique}": 1, f"{random_quant}": 1, "_id": 0}]
+    query_string = f"collection.aggregate({json.dumps(query)}).limit(5)"
     data = list(query_result)
     headers = list(data[0].keys())[::-1] if data else []
     # Ensure rows are aligned with reversed headers
@@ -314,13 +357,17 @@ range_vals = get_quant_range(df, numeric)
 # store updated df in mongodb
 collection_name = store_in_mongodb(df_updated, filename)
 
-# test NLP
-sample_tokens = process_input("Please provide sample queries")
-# generate sample queries
-gen_total_query(categorical, numeric, collection_name)
-gen_average_query(categorical, numeric, collection_name)
-gen_counts_query(categorical, collection_name)
-gen_gtlt_query_group(categorical, numeric, range_vals, "gt", collection_name)
-gen_gtlt_query_group(categorical, numeric, range_vals, "lt", collection_name)
-# generate sample queries with a specific construct, ie. group by
-# generate query based on matching template to 
+# # test NLP
+# sample_tokens = process_input("Please provide sample queries")
+# # generate sample queries
+
+# gen_total_query(categorical, numeric, collection_name)
+# gen_average_query(categorical, numeric, collection_name)
+# gen_counts_query(categorical, collection_name)
+# gen_gtlt_query_group(categorical, numeric, range_vals, "gt", collection_name)
+# gen_gtlt_query_group(categorical, numeric, range_vals, "lt", collection_name)
+# gen_gtlt_query_unique(unique, numeric, range_vals, "gt", collection_name)
+# gen_gtlt_query_unique(unique, numeric, range_vals, "lt", collection_name)
+
+# # generate sample queries with a specific construct, ie. group by
+# # generate query based on matching template to 
