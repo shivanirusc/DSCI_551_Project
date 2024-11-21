@@ -320,9 +320,8 @@ def generate_sql_query(user_input, column_names, table_name):
     if not mapped_columns:
         return "No matching columns found in your input. Please try again.", None
 
-    # Identify quantitative and categorical columns
-    categorical_columns = [col for col in mapped_columns if col in ['category', 'material', 'color', 'location', 'season', 'store_type', 'brand']]
-    quantitative_columns = [col for col in mapped_columns if col not in categorical_columns]
+    # Categorize columns based on the dataframe
+    categorical_columns, quantitative_columns = categorize_columns(dataframe)
 
     # Example query pattern: "total <A> by <B>"
     if "total" in tokens or "sum" in tokens:
@@ -335,11 +334,18 @@ def generate_sql_query(user_input, column_names, table_name):
 
     # Example pattern: "average <A> by <B>"
     if "average" in tokens or "avg" in tokens:
+        # Look for specific quantitative columns like sales and quantity
         for quant in quantitative_columns:
             for cat in categorical_columns:
-                if quant in tokens and cat in tokens:
-                    sql_query = f"SELECT {cat}, AVG({quant}) as average_{quant} FROM {table_name} GROUP BY {cat}"
-                    nat_lang_query = f"Average {quant} by {cat}"
+                if quant in mapped_columns and cat in mapped_columns:
+                    # Build the SQL query with optional brand filtering
+                    if brand_name:
+                        sql_query = f"SELECT {cat}, AVG(sales) as average_sales, AVG(quantity) as average_quantity FROM {table_name} WHERE brand = '{brand_name}' GROUP BY {cat}, season"
+                        nat_lang_query = f"Average sales and quantity by {cat} and season where brand is '{brand_name}'"
+                    else:
+                        sql_query = f"SELECT {cat}, AVG(sales) as average_sales, AVG(quantity) as average_quantity FROM {table_name} GROUP BY {cat}, season"
+                        nat_lang_query = f"Average sales and quantity by {cat} and season"
+
                     return nat_lang_query, sql_query
 
     # Example pattern: "maximum <A> by <B>"
