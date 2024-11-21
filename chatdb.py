@@ -8,6 +8,8 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 import os
 
+from sql_sample_queries import categorize_columns, generate_sample_queries, generate_construct_queries
+
 # Download NLTK resources
 def download_nltk_resources():
     try:
@@ -170,32 +172,52 @@ st.write("**Chat with ChatDB:**")
 user_input = st.text_input("Type your query here:")
 
 if user_input and uploaded_columns:
-    nat_lang_query, sql_query = generate_sql_query(user_input, uploaded_columns, table_name)
+    # Handle "example sql query"
+    if user_input.lower() == "example sql query":
+        if table_name:  # Ensure a table is available
+            # Categorize columns
+            categorical, quantitative = categorize_columns(data)
+            if categorical and quantitative:
+                # Generate sample queries
+                sample_queries = generate_sample_queries(table_name, categorical, quantitative)
 
-    if sql_query:
-        st.write(f"**Natural Language Query:** {nat_lang_query}")
-        st.code(sql_query)
-
-        # Execute the query on SQLite database
-        if filename.endswith('.csv'):
-            conn = sqlite3.connect("chatdb_sql.db")
-            result = pd.read_sql_query(sql_query, conn)
-            st.write("**Query Result from SQLite:**")
-            st.dataframe(result)
-
-        # Execute the query on MongoDB database
-        if filename.endswith('.json'):
-            collection = mongo_db[table_name]
-            pipeline = [
-                {"$group": {"_id": f"${processed_tokens[1]}", f"total_{processed_tokens[3]}": {"$sum": f"${processed_tokens[3]}"}}}
-            ]
-            result = list(collection.aggregate(pipeline))
-            result_df = pd.DataFrame(result)
-            st.write("**Query Result from MongoDB:**")
-            st.dataframe(result_df)
-
+                # Format the output
+                st.write("Here are some example SQL queries:")
+                for sample_query in sample_queries:
+                    st.code(sample_query)
+            else:
+                st.write("Your dataset does not have the necessary columns for sample SQL queries.")
+        else:
+            st.write("Please upload a dataset first to generate example queries.")
+        
+            
     else:
-        st.write(nat_lang_query)
+        nat_lang_query, sql_query = generate_sql_query(user_input, uploaded_columns, table_name)
+
+        if sql_query:
+            st.write(f"**Natural Language Query:** {nat_lang_query}")
+            st.code(sql_query)
+
+            # Execute the query on SQLite database
+            if filename.endswith('.csv'):
+                conn = sqlite3.connect("chatdb_sql.db")
+                result = pd.read_sql_query(sql_query, conn)
+                st.write("**Query Result from SQLite:**")
+                st.dataframe(result)
+
+            # Execute the query on MongoDB database
+            elif filename.endswith('.json'):
+                collection = mongo_db[table_name]
+                pipeline = [
+                    {"$group": {"_id": f"${processed_tokens[1]}", f"total_{processed_tokens[3]}": {"$sum": f"${processed_tokens[3]}"}}}
+                ]
+                result = list(collection.aggregate(pipeline))
+                result_df = pd.DataFrame(result)
+                st.write("**Query Result from MongoDB:**")
+                st.dataframe(result_df)
+
+        else:
+            st.write(nat_lang_query)
 elif user_input:
     st.write("Please upload a dataset first.")
 
@@ -204,7 +226,10 @@ if 'chat_history' not in st.session_state:
     st.session_state['chat_history'] = []
 
 if user_input:
-    st.session_state['chat_history'].append({"user": user_input, "response": nat_lang_query if sql_query else "Unable to generate query."})
+    if user_input.lower() == "example sql query":
+        st.session_state['chat_history'].append({"user": user_input, "response": sample_query})
+    else:
+        st.session_state['chat_history'].append({"user": user_input, "response": nat_lang_query if sql_query else "Unable to generate query."})
 
 for chat in st.session_state['chat_history']:
     st.write(f"**You:** {chat['user']}")
