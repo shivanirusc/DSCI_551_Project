@@ -244,7 +244,7 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 import os
 
-from sql_sample_queries import generate_sample_queries
+from sql_queries import categorize_columns, generate_sample_queries, generate_construct_queries,execute_query
 
 # Download NLTK resources
 def download_nltk_resources():
@@ -422,23 +422,22 @@ user_input = st.text_input("Type your query here:")
 if user_input and uploaded_columns:
     # Handle "example sql query"
     if user_input.lower() == "example sql query":
-        if table_name:  # Ensure a table is available
-            # Categorize columns
-            categorical, quantitative = categorize_columns(data)
-            if categorical and quantitative:
-                # Generate sample queries
-                sample_queries = generate_sample_queries(table_name, categorical, quantitative)
+        # Categorize columns
+        categorical, quantitative = categorize_columns(data)
+        if categorical and quantitative:
+            # Generate sample queries
+            sample_queries = generate_sample_queries(table_name, categorical, quantitative)
 
-                # Format the output
-                st.write("Here are some example SQL queries:")
-                for sample_query in sample_queries:
-                    st.code(sample_query)
-            else:
-                st.write("Your dataset does not have the necessary columns for sample SQL queries.")
+            # Format the output
+            st.write("Here are some example SQL queries:")
+            # Cycles through 3 generated sample queries
+            for sample_query in sample_queries:
+                st.code(sample_query)
+                # Executes each query
+                execute_query(sample_query)
         else:
-            st.write("Please upload a dataset first to generate example queries.")
-        
-            
+            st.write("Your dataset does not have the necessary columns for sample SQL queries.")
+    
     else:
         nat_lang_query, sql_query = generate_sql_query(user_input, uploaded_columns, table_name, data)
 
@@ -448,10 +447,7 @@ if user_input and uploaded_columns:
 
             # Execute the query on SQLite database
             if filename.endswith('.csv'):
-                conn = sqlite3.connect("chatdb_sql.db")
-                result = pd.read_sql_query(sql_query, conn)
-                st.write("**Query Result from SQLite:**")
-                st.dataframe(result)
+                execute_query(sql_query)
 
             # Execute the query on MongoDB database
             elif filename.endswith('.json'):
@@ -461,3 +457,20 @@ if user_input and uploaded_columns:
                 st.write(result)
         else:
             st.write(nat_lang_query)
+elif user_input:
+    st.write("Please upload a dataset first.")
+
+# Display chat history
+if 'chat_history' not in st.session_state:
+    st.session_state['chat_history'] = []
+
+if user_input:
+    # Adds example queries to chat history
+    if user_input.lower() == "example sql query":
+        st.session_state['chat_history'].append({"user": user_input, "response": sample_query if sample_query else "Unable to generate query."})
+    else:
+        st.session_state['chat_history'].append({"user": user_input, "response": nat_lang_query if sql_query else "Unable to generate query."})
+
+for chat in st.session_state['chat_history']:
+    st.write(f"**You:** {chat['user']}")
+    st.write(f"**ChatDB:** {chat['response']}")
