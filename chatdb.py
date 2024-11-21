@@ -138,7 +138,7 @@ def process_input(user_input):
 
 #     # If no specific match, return a generic query
 #     return "Query could not be interpreted. Please try rephrasing.", None
-def generate_sql_query(natural_query, table_name):
+def generate_sql_query(natural_query,column_names, table_name):
     """
     Generate SQL query from a natural language query.
 
