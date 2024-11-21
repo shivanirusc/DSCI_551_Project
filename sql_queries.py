@@ -1,4 +1,7 @@
 import random
+import sqlite3
+import streamlit as st
+import pandas as pd
 
 # Categorizes columns to be quantitative or qualitative so that we can map them to query templates
 def categorize_columns(dataframe):
@@ -10,7 +13,10 @@ templates = [
     "SELECT {column}, SUM({value_column}) AS total_{value_column} FROM {table} GROUP BY {column}",
     "SELECT {column}, AVG({value_column}) AS avg_{value_column} FROM {table} GROUP BY {column}",
     "SELECT {column}, MAX({value_column}) AS max_{value_column} FROM {table} GROUP BY {column}",
-    "SELECT COUNT(*) AS total_records FROM {table} WHERE {column} = 'some_value'"
+    "SELECT {column}, AVG({value_column}) AS avg_{value_column} FROM {table} WHERE {value_column} != 70 GROUP BY {column} HAVING avg_{value_column}> 50",
+    "SELECT {column}, {value_column} FROM {table} ORDER BY {value_column} ASC",
+    "SELECT {column}, {value_column} FROM {table} ORDER BY {value_column} DESC LIMIT 6"
+
 ]
 
 # Generates sample queries
@@ -22,6 +28,13 @@ def generate_sample_queries(table_name, categorical, quantitative):
         value_column = random.choice(quantitative)
         queries.append(template.format(column=column, value_column=value_column, table=table_name))
     return queries
+
+# Query Execution
+def execute_query(query):
+    conn = sqlite3.connect("chatdb_sql.db")
+    result = pd.read_sql_query(query, conn)
+    st.write("**Query Result from SQLite:**")
+    st.dataframe(result)
 
 
 def generate_construct_queries(construct, table_name, categorical, quantitative):
