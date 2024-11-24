@@ -323,6 +323,66 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
     # Categorize columns based on the dataframe
     categorical_columns, quantitative_columns = categorize_columns(dataframe)
 
+    # # Example query pattern: "total <A> by <B>"
+    # if "total" in tokens or "sum" in tokens:
+    #     for quant in quantitative_columns:
+    #         for cat in categorical_columns:
+    #             if quant in tokens and cat in tokens:
+    #                 sql_query = f"SELECT {cat}, SUM({quant}) as total_{quant} FROM {table_name} GROUP BY {cat}"
+    #                 nat_lang_query = f"Total {quant} by {cat}"
+    #                 return nat_lang_query, sql_query
+
+    # # Example pattern: "average <A> by <B>"
+    # if "average" in tokens or "avg" in tokens:
+    #     # Look for specific quantitative columns like sales and quantity
+    #     for quant in quantitative_columns:
+    #         for cat in categorical_columns:
+    #             if quant in mapped_columns and cat in mapped_columns:
+    #                 # Build the SQL query with optional brand filtering
+    #                 if brand_name:
+    #                     sql_query = f"SELECT {cat}, AVG(sales) as average_sales, AVG(quantity) as average_quantity FROM {table_name} WHERE brand = '{brand_name}' GROUP BY {cat}, season"
+    #                     nat_lang_query = f"Average sales and quantity by {cat} and season where brand is '{brand_name}'"
+    #                 else:
+    #                     sql_query = f"SELECT {cat}, AVG(sales) as average_sales, AVG(quantity) as average_quantity FROM {table_name} GROUP BY {cat}, season"
+    #                     nat_lang_query = f"Average sales and quantity by {cat} and season"
+
+    #                 return nat_lang_query, sql_query
+
+    # # Example pattern: "maximum <A> by <B>"
+    # if "maximum" in tokens or "max" in tokens:
+    #     for quant in quantitative_columns:
+    #         for cat in categorical_columns:
+    #             if quant in tokens and cat in tokens:
+    #                 sql_query = f"SELECT {cat}, MAX({quant}) as max_{quant} FROM {table_name} GROUP BY {cat}"
+    #                 nat_lang_query = f"Maximum {quant} by {cat}"
+    #                 return nat_lang_query, sql_query
+
+    # # Example pattern: "count of <A> by <B>"
+    # if "count" in tokens or "total" in tokens:
+    #     for cat in categorical_columns:
+    #         if cat in tokens:
+    #             sql_query = f"SELECT {cat}, COUNT(*) as count_{cat} FROM {table_name} GROUP BY {cat}"
+    #             nat_lang_query = f"Count of {cat}"
+    #             return nat_lang_query, sql_query
+
+    # # Example pattern: "total <A> where <B>"
+    # if "where" in tokens:
+    #     for quant in quantitative_columns:
+    #         if quant in tokens:
+    #             condition = ' '.join(tokens[tokens.index("where")+1:])
+    #             sql_query = f"SELECT SUM({quant}) as total_{quant} FROM {table_name} WHERE {condition}"
+    #             nat_lang_query = f"Total {quant} where {condition}"
+    #             return nat_lang_query, sql_query
+
+    # # Example pattern: "top N <A> by <B>"
+    # if "top" in tokens and "by" in tokens:
+    #     for quant in quantitative_columns:
+    #         for cat in categorical_columns:
+    #             if quant in tokens and cat in tokens:
+    #                 n_value = 5  # Default top 5, could be extracted from input if specified
+    #                 sql_query = f"SELECT {cat}, SUM({quant}) as total_{quant} FROM {table_name} GROUP BY {cat} ORDER BY total_{quant} DESC LIMIT {n_value}"
+    #                 nat_lang_query = f"Top {n_value} {cat} by {quant}"
+    #                 return nat_lang_query, sql_query
     # Example query pattern: "total <A> by <B>"
     if "total" in tokens or "sum" in tokens:
         for quant in quantitative_columns:
@@ -334,18 +394,11 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
 
     # Example pattern: "average <A> by <B>"
     if "average" in tokens or "avg" in tokens:
-        # Look for specific quantitative columns like sales and quantity
         for quant in quantitative_columns:
             for cat in categorical_columns:
-                if quant in mapped_columns and cat in mapped_columns:
-                    # Build the SQL query with optional brand filtering
-                    if brand_name:
-                        sql_query = f"SELECT {cat}, AVG(sales) as average_sales, AVG(quantity) as average_quantity FROM {table_name} WHERE brand = '{brand_name}' GROUP BY {cat}, season"
-                        nat_lang_query = f"Average sales and quantity by {cat} and season where brand is '{brand_name}'"
-                    else:
-                        sql_query = f"SELECT {cat}, AVG(sales) as average_sales, AVG(quantity) as average_quantity FROM {table_name} GROUP BY {cat}, season"
-                        nat_lang_query = f"Average sales and quantity by {cat} and season"
-
+                if quant in tokens and cat in tokens:
+                    sql_query = f"SELECT {cat}, AVG({quant}) as average_{quant} FROM {table_name} GROUP BY {cat}"
+                    nat_lang_query = f"Average {quant} by {cat}"
                     return nat_lang_query, sql_query
 
     # Example pattern: "maximum <A> by <B>"
