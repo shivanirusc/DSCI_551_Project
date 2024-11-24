@@ -422,23 +422,32 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
 
     # Handle aggregation (e.g., average) and SQL query construction
     if "average" in tokens or "avg" in tokens:
+        sql_query = f"SELECT {', '.join(categorical_columns)}, "
+        
+        # Aggregate over quantitative columns (sales and quantity in this case)
+        aggregation_parts = []
         for quant in quantitative_columns:
-            for cat in categorical_columns:
-                # Build SQL query with optional filtering
-                sql_query = f"SELECT {cat}, AVG({quant}) as average_{quant} FROM {table_name}"
-                nat_lang_query = f"Average {quant} by {cat}"
-                
-                # Apply filters if present (e.g., filtering by specific column values)
-                filter_conditions = []
-                for col, value in filters.items():
-                    filter_conditions.append(f"{col} = '{value}'")
-                
-                if filter_conditions:
-                    sql_query += " WHERE " + " AND ".join(filter_conditions)
-                    nat_lang_query += " where " + " and ".join([f"{col} is '{value}'" for col, value in filters.items()])
-                
-                sql_query += f" GROUP BY {cat}"
-                return nat_lang_query, sql_query
+            aggregation_parts.append(f"AVG({quant}) as average_{quant}")
+        
+        sql_query += ", ".join(aggregation_parts)
+        sql_query += f" FROM {table_name}"
+        
+        # Apply filters if present (e.g., filtering by specific column values)
+        filter_conditions = []
+        for col, value in filters.items():
+            filter_conditions.append(f"{col} = '{value}'")
+        
+        if filter_conditions:
+            sql_query += " WHERE " + " AND ".join(filter_conditions)
+        
+        sql_query += f" GROUP BY {', '.join(categorical_columns)}"
+        
+        # Returning the natural language query and SQL query
+        nat_lang_query = f"Average {' and '.join(quantitative_columns)} by {' and '.join(categorical_columns)}"
+        if filters:
+            nat_lang_query += " where " + " and ".join([f"{col} is '{value}'" for col, value in filters.items()])
+        
+        return nat_lang_query, sql_query
     
     # Handle filters like "greater than", "less than", etc.
     if "greater" in tokens or "less" in tokens or "equals" in tokens:
