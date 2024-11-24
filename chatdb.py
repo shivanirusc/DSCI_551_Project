@@ -310,104 +310,10 @@ def categorize_columns(dataframe):
     return categorical, quantitative
 
 # Function to generate SQL queries based on user input
-# def generate_sql_query(user_input, column_names, table_name, dataframe):
-#     # Clean and tokenize the user input
-#     tokens = process_input(user_input)
-    
-#     # Map the tokens to actual column names
-#     mapped_columns = [col for col in column_names if col.lower() in tokens]
-
-#     if not mapped_columns:
-#         return "No matching columns found in your input. Please try again.", None
-
-#     # Categorize columns based on the dataframe
-#     categorical_columns, quantitative_columns = categorize_columns(dataframe)
-
-#     # Example query pattern: "total <A> by <B>"
-#     if "total" in tokens or "sum" in tokens:
-#         for quant in quantitative_columns:
-#             for cat in categorical_columns:
-#                 if quant in tokens and cat in tokens:
-#                     sql_query = f"SELECT {cat}, SUM({quant}) as total_{quant} FROM {table_name} GROUP BY {cat}"
-#                     nat_lang_query = f"Total {quant} by {cat}"
-#                     return nat_lang_query, sql_query
-
-#     # Example pattern: "average <A> by <B>"
-#     if "average" in tokens or "avg" in tokens:
-#         # Look for specific quantitative columns like sales and quantity
-#         for quant in quantitative_columns:
-#             for cat in categorical_columns:
-#                 if quant in mapped_columns and cat in mapped_columns:
-#                     # Build the SQL query with optional brand filtering
-#                     if brand_name:
-#                         sql_query = f"SELECT {cat}, AVG(sales) as average_sales, AVG(quantity) as average_quantity FROM {table_name} WHERE brand = '{brand_name}' GROUP BY {cat}, season"
-#                         nat_lang_query = f"Average sales and quantity by {cat} and season where brand is '{brand_name}'"
-#                     else:
-#                         sql_query = f"SELECT {cat}, AVG(sales) as average_sales, AVG(quantity) as average_quantity FROM {table_name} GROUP BY {cat}, season"
-#                         nat_lang_query = f"Average sales and quantity by {cat} and season"
-
-#                     return nat_lang_query, sql_query
-
-#     # Example pattern: "maximum <A> by <B>"
-#     if "maximum" in tokens or "max" in tokens:
-#         for quant in quantitative_columns:
-#             for cat in categorical_columns:
-#                 if quant in tokens and cat in tokens:
-#                     sql_query = f"SELECT {cat}, MAX({quant}) as max_{quant} FROM {table_name} GROUP BY {cat}"
-#                     nat_lang_query = f"Maximum {quant} by {cat}"
-#                     return nat_lang_query, sql_query
-
-#     # Example pattern: "count of <A> by <B>"
-#     if "count" in tokens or "total" in tokens:
-#         for cat in categorical_columns:
-#             if cat in tokens:
-#                 sql_query = f"SELECT {cat}, COUNT(*) as count_{cat} FROM {table_name} GROUP BY {cat}"
-#                 nat_lang_query = f"Count of {cat}"
-#                 return nat_lang_query, sql_query
-
-#     # Example pattern: "total <A> where <B>"
-#     if "where" in tokens:
-#         for quant in quantitative_columns:
-#             if quant in tokens:
-#                 condition = ' '.join(tokens[tokens.index("where")+1:])
-#                 sql_query = f"SELECT SUM({quant}) as total_{quant} FROM {table_name} WHERE {condition}"
-#                 nat_lang_query = f"Total {quant} where {condition}"
-#                 return nat_lang_query, sql_query
-
-#     # Example pattern: "top N <A> by <B>"
-#     if "top" in tokens and "by" in tokens:
-#         for quant in quantitative_columns:
-#             for cat in categorical_columns:
-#                 if quant in tokens and cat in tokens:
-#                     n_value = 5  # Default top 5, could be extracted from input if specified
-#                     sql_query = f"SELECT {cat}, SUM({quant}) as total_{quant} FROM {table_name} GROUP BY {cat} ORDER BY total_{quant} DESC LIMIT {n_value}"
-#                     nat_lang_query = f"Top {n_value} {cat} by {quant}"
-#                     return nat_lang_query, sql_query
-
-#     # If no specific match, return a generic query
-#     return "Query could not be interpreted. Please try rephrasing.", None
-# Extract any filters from the user input, such as brand or category conditions
-
-def extract_filters(tokens, column_names):
-    filters = {}
-    
-    # Check for filters related to any column in the user input
-    for token in tokens:
-        for col in column_names:
-            if col.lower() in token.lower():
-                # Assume that the token represents a filter condition, e.g., "category = 'Furniture'"
-                if "=" in token:
-                    column, value = token.split("=")
-                    filters[col] = value.strip("'").strip('"')
-                elif ">" in token or "<" in token:
-                    # Capture numeric range filters like price > 100
-                    filters[col] = token
-    return filters
-
 def generate_sql_query(user_input, column_names, table_name, dataframe):
     # Clean and tokenize the user input
     tokens = process_input(user_input)
-
+    
     # Map the tokens to actual column names
     mapped_columns = [col for col in column_names if col.lower() in tokens]
 
@@ -417,93 +323,6 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
     # Categorize columns based on the dataframe
     categorical_columns, quantitative_columns = categorize_columns(dataframe)
 
-    # Extract any filters from the user input, such as specific column values (e.g., brand, category)
-    filters = extract_filters(tokens, column_names)
-
-    # Check for common aggregation keywords like "average", "avg"
-    if 'average' in tokens or 'avg' in tokens:
-        aggregation_type = 'AVG'
-    else:
-        return "Aggregation type not recognized", None
-
-    # Find relevant columns from user input
-    group_by_columns = [col for col in column_names if col.lower() in tokens]
-    
-    # If no group-by columns found, assume the user meant to group by a category (like 'category')
-    if not group_by_columns:
-        group_by_columns = ['category']
-
-    # Build the SQL SELECT part of the query
-    select_columns = [f"{aggregation_type}({col}) AS average_{col}" for col in quantitative_columns]
-
-    # Build the SQL WHERE part for any filters
-    where_clauses = []
-    if "where" in tokens:
-        # Extract filter conditions (like 'price > 100')
-        where_start = tokens.index('where') + 1
-        where_conditions = " ".join(tokens[where_start:])
-        where_clauses.append(where_conditions)
-
-    # Construct the final SQL query
-    sql_query = f"SELECT {', '.join(group_by_columns)}, {', '.join(select_columns)} FROM {table_name}"
-
-    if where_clauses:
-        sql_query += " WHERE " + " AND ".join(where_clauses)
-
-    sql_query += f" GROUP BY {', '.join(group_by_columns)}"
-    
-    # Return a basic natural language version of the query and the SQL query
-    nat_lang_query = f"Average {', '.join(quantitative_columns)} by {', '.join(group_by_columns)}"
-    if where_clauses:
-        nat_lang_query += " where " + " and ".join(where_clauses)
-
-    return nat_lang_query, sql_query
-    
-    # Handle filters like "greater than", "less than", etc.
-    if "greater" in tokens or "less" in tokens or "equals" in tokens:
-        for quant in quantitative_columns:
-            if quant in mapped_columns:
-                # Extract condition
-                operator = None
-                if "greater" in tokens:
-                    operator = ">"
-                elif "less" in tokens:
-                    operator = "<"
-                elif "equals" in tokens:
-                    operator = "="
-
-                if operator:
-                    condition_start = tokens.index(operator) + 1
-                    value = tokens[condition_start]
-                    sql_query = f"""
-                        SELECT *
-                        FROM {table_name}
-                        WHERE {quant} {operator} {value}
-                    """
-                    nat_lang_query = f"Rows where {quant} {operator} {value}"
-                    return nat_lang_query, sql_query
-
-    # Handle "top N <A> by <B>"
-    if "top" in tokens and "by" in tokens:
-        for quant in quantitative_columns:
-            for cat in categorical_columns:
-                if quant in tokens and cat in tokens:
-                    n_value = 5  # Default top 5, or extract from user input
-                    if "top" in tokens:
-                        idx = tokens.index("top")
-                        if idx + 1 < len(tokens) and tokens[idx + 1].isdigit():
-                            n_value = int(tokens[idx + 1])
-
-                    sql_query = f"""
-                        SELECT {cat}, SUM({quant}) as total_{quant}
-                        FROM {table_name}
-                        GROUP BY {cat}
-                        ORDER BY total_{quant} DESC
-                        LIMIT {n_value}
-                    """
-                    nat_lang_query = f"Top {n_value} {cat} by {quant}"
-                    return nat_lang_query, sql_query
-
     # Example query pattern: "total <A> by <B>"
     if "total" in tokens or "sum" in tokens:
         for quant in quantitative_columns:
@@ -511,6 +330,22 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
                 if quant in tokens and cat in tokens:
                     sql_query = f"SELECT {cat}, SUM({quant}) as total_{quant} FROM {table_name} GROUP BY {cat}"
                     nat_lang_query = f"Total {quant} by {cat}"
+                    return nat_lang_query, sql_query
+
+    # Example pattern: "average <A> by <B>"
+    if "average" in tokens or "avg" in tokens:
+        # Look for specific quantitative columns like sales and quantity
+        for quant in quantitative_columns:
+            for cat in categorical_columns:
+                if quant in mapped_columns and cat in mapped_columns:
+                    # Build the SQL query with optional brand filtering
+                    if brand_name:
+                        sql_query = f"SELECT {cat}, AVG(sales) as average_sales, AVG(quantity) as average_quantity FROM {table_name} WHERE brand = '{brand_name}' GROUP BY {cat}, season"
+                        nat_lang_query = f"Average sales and quantity by {cat} and season where brand is '{brand_name}'"
+                    else:
+                        sql_query = f"SELECT {cat}, AVG(sales) as average_sales, AVG(quantity) as average_quantity FROM {table_name} GROUP BY {cat}, season"
+                        nat_lang_query = f"Average sales and quantity by {cat} and season"
+
                     return nat_lang_query, sql_query
 
     # Example pattern: "maximum <A> by <B>"
@@ -529,6 +364,25 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
                 sql_query = f"SELECT {cat}, COUNT(*) as count_{cat} FROM {table_name} GROUP BY {cat}"
                 nat_lang_query = f"Count of {cat}"
                 return nat_lang_query, sql_query
+
+    # Example pattern: "total <A> where <B>"
+    if "where" in tokens:
+        for quant in quantitative_columns:
+            if quant in tokens:
+                condition = ' '.join(tokens[tokens.index("where")+1:])
+                sql_query = f"SELECT SUM({quant}) as total_{quant} FROM {table_name} WHERE {condition}"
+                nat_lang_query = f"Total {quant} where {condition}"
+                return nat_lang_query, sql_query
+
+    # Example pattern: "top N <A> by <B>"
+    if "top" in tokens and "by" in tokens:
+        for quant in quantitative_columns:
+            for cat in categorical_columns:
+                if quant in tokens and cat in tokens:
+                    n_value = 5  # Default top 5, could be extracted from input if specified
+                    sql_query = f"SELECT {cat}, SUM({quant}) as total_{quant} FROM {table_name} GROUP BY {cat} ORDER BY total_{quant} DESC LIMIT {n_value}"
+                    nat_lang_query = f"Top {n_value} {cat} by {quant}"
+                    return nat_lang_query, sql_query
 
     # If no specific match, return a generic query
     return "Query could not be interpreted. Please try rephrasing.", None
@@ -586,7 +440,7 @@ if user_input and uploaded_columns:
         
             
     else:
-        nat_lang_query, sql_query = generate_sql_query(user_input, uploaded_columns, table_name, data)
+        nat_lang_query, sql_query = generate_sql_query(user_input, uploaded_columns, table_name)
 
         if sql_query:
             st.write(f"**Natural Language Query:** {nat_lang_query}")
@@ -602,8 +456,29 @@ if user_input and uploaded_columns:
             # Execute the query on MongoDB database
             elif filename.endswith('.json'):
                 collection = mongo_db[table_name]
-                result = collection.aggregate([{"$group": {"_id": "$" + nat_lang_query, "total": {"$sum": "$" + nat_lang_query}}}])
+                pipeline = [
+                    {"$group": {"_id": f"${processed_tokens[1]}", f"total_{processed_tokens[3]}": {"$sum": f"${processed_tokens[3]}"}}}
+                ]
+                result = list(collection.aggregate(pipeline))
+                result_df = pd.DataFrame(result)
                 st.write("**Query Result from MongoDB:**")
-                st.write(result)
+                st.dataframe(result_df)
+
         else:
             st.write(nat_lang_query)
+elif user_input:
+    st.write("Please upload a dataset first.")
+
+# Display chat history
+if 'chat_history' not in st.session_state:
+    st.session_state['chat_history'] = []
+
+if user_input:
+    if user_input.lower() == "example sql query":
+        st.session_state['chat_history'].append({"user": user_input, "response": sample_query})
+    else:
+        st.session_state['chat_history'].append({"user": user_input, "response": nat_lang_query if sql_query else "Unable to generate query."})
+
+for chat in st.session_state['chat_history']:
+    st.write(f"**You:** {chat['user']}")
+    st.write(f"**ChatDB:** {chat['response']}")
