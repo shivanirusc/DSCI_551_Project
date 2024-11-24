@@ -400,31 +400,20 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
     # Categorize columns based on the dataframe
     categorical_columns, quantitative_columns = categorize_columns(dataframe)
 
-    # Handle "average <A> by <B> where <C>"
+    # Example query pattern: "average <A> by <B> where <C>"
     if "average" in tokens or "avg" in tokens:
+        # Look for specific quantitative columns like sales and quantity
         for quant in quantitative_columns:
             for cat in categorical_columns:
                 if quant in mapped_columns and cat in mapped_columns:
-                    # Check for "where" clause
-                    if "where" in tokens:
-                        condition_start = tokens.index("where") + 1
-                        condition = ' '.join(tokens[condition_start:])
-                        sql_query = f"""
-                            SELECT {cat}, AVG({quant}) as average_{quant}
-                            FROM {table_name}
-                            WHERE {condition}
-                            GROUP BY {cat}
-                        """
-                        nat_lang_query = f"Average {quant} by {cat} where {condition}"
-                        return nat_lang_query, sql_query
+                    # Build the SQL query with optional brand filtering
+                    if brand_name:
+                        sql_query = f"SELECT {cat}, AVG(sales) as average_sales, AVG(quantity) as average_quantity FROM {table_name} WHERE brand = '{brand_name}' GROUP BY {cat}, season"
+                        nat_lang_query = f"Average sales and quantity by {cat} and season where brand is '{brand_name}'"
+                    else:
+                        sql_query = f"SELECT {cat}, AVG(sales) as average_sales, AVG(quantity) as average_quantity FROM {table_name} GROUP BY {cat}, season"
+                        nat_lang_query = f"Average sales and quantity by {cat} and season"
 
-                    # Simple average by category
-                    sql_query = f"""
-                        SELECT {cat}, AVG({quant}) as average_{quant}
-                        FROM {table_name}
-                        GROUP BY {cat}
-                    """
-                    nat_lang_query = f"Average {quant} by {cat}"
                     return nat_lang_query, sql_query
 
     # Handle filters like "greater than", "less than", etc.
@@ -472,16 +461,12 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
                     nat_lang_query = f"Top {n_value} {cat} by {quant}"
                     return nat_lang_query, sql_query
 
-    # Handle "total <A> by <B>"
+    # Example query pattern: "total <A> by <B>"
     if "total" in tokens or "sum" in tokens:
         for quant in quantitative_columns:
             for cat in categorical_columns:
                 if quant in tokens and cat in tokens:
-                    sql_query = f"""
-                        SELECT {cat}, SUM({quant}) as total_{quant}
-                        FROM {table_name}
-                        GROUP BY {cat}
-                    """
+                    sql_query = f"SELECT {cat}, SUM({quant}) as total_{quant} FROM {table_name} GROUP BY {cat}"
                     nat_lang_query = f"Total {quant} by {cat}"
                     return nat_lang_query, sql_query
 
