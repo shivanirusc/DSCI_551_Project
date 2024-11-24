@@ -390,11 +390,18 @@ def categorize_columns(dataframe):
 
 def extract_filters(tokens, column_names):
     filters = {}
+    
+    # Check for filters related to any column in the user input
     for token in tokens:
-        # Check if any token matches the column names (for filtering purposes)
         for col in column_names:
-            if token.lower() == col.lower():
-                filters[col] = token
+            if col.lower() in token.lower():
+                # Assume that the token represents a filter condition, e.g., "category = 'Furniture'"
+                if "=" in token:
+                    column, value = token.split("=")
+                    filters[col] = value.strip("'").strip('"')
+                elif ">" in token or "<" in token:
+                    # Capture numeric range filters like price > 100
+                    filters[col] = token
     return filters
 
 def generate_sql_query(user_input, column_names, table_name, dataframe):
