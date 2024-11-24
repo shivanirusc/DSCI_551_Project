@@ -172,45 +172,49 @@ st.write("**Chat with ChatDB:**")
 user_input = st.text_input("Type your query here:")
 
 if user_input and uploaded_columns:
+
     # Handle "example sql query"
     if user_input.lower() == "example sql query":
         categorical, quantitative = categorize_columns(data)
-        if categorical and quantitative:
-            # Generate sample queries
-            sample_queries = generate_sample_queries(table_name, categorical, quantitative)
+    
+        # Generate sample queries
+        sample_queries = generate_sample_queries(table_name, categorical, quantitative)
 
+        if sample_queries != 0:
             # Format the output
             st.write("Here are some example SQL queries:")
-            for sample_query in sample_queries:
+            for sample_query, nl_query in sample_queries:
                 # Print each query
+                st.write(nl_query)
                 st.code(sample_query)
                 # Executes query and shows result
                 execute_query(sample_query)
         else:
-            st.write("Your dataset does not have the necessary columns for sample SQL queries.")
-        
-    if "example query with" in user_input.lower():
+            st.write('Data does not have necessary columns to product output')
+    
+    # Handle cases with specified language construct
+    elif "example query with" in user_input.lower():
         # Extract the construct from the user input
         construct = user_input.lower().replace("example query with", "").strip()
 
         # Categorize columns into categorical and quantitative
         categorical, quantitative = categorize_columns(data)
 
-        if categorical and quantitative:
-            # Generate queries based on the specified construct
-            construct_queries = generate_construct_queries(construct, table_name, categorical, quantitative)
+        # Generate queries based on the specified construct
+        construct_queries = generate_construct_queries(construct, table_name, categorical, quantitative)
 
-            if construct_queries:
-                # Format the output
-                st.write(f"Here are some example SQL queries using '{construct}':")
-                for construct_query in construct_queries:
-                    st.code(construct_query)
-                    execute_query(construct_query)  # Assuming execute_query is a function that runs and displays the query
-                    break
-            else:
-                st.write(f"No valid queries could be generated for the construct '{construct}'.")
+
+        if construct_queries != 0:
+            # Format the output
+            st.write(f"Here are some example SQL queries using '{construct}':")
+            for construct_query, nl_query in construct_queries:
+                st.write(nl_query)
+                st.code(construct_query)
+                # Executes query and shows result
+                execute_query(construct_query)
         else:
-            st.write("Your dataset does not have the necessary columns for construct-specific queries.")
+            st.write("Please speciffy a construct among the following: 'group by', 'where', 'having', 'order by', 'aggregation'" )
+
 
 
     else:
