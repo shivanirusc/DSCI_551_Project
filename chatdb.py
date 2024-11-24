@@ -386,6 +386,16 @@ def categorize_columns(dataframe):
 
 #     # If no specific match, return a generic query
 #     return "Query could not be interpreted. Please try rephrasing.", None
+# Extract any filters from the user input, such as brand or category conditions
+
+def extract_filters(tokens, column_names):
+    filters = {}
+    for token in tokens:
+        # Check if any token matches the column names (for filtering purposes)
+        for col in column_names:
+            if token.lower() == col.lower():
+                filters[col] = token
+    return filters
 
 def generate_sql_query(user_input, column_names, table_name, dataframe):
     # Clean and tokenize the user input
@@ -400,22 +410,29 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
     # Categorize columns based on the dataframe
     categorical_columns, quantitative_columns = categorize_columns(dataframe)
 
-    # Example query pattern: "average <A> by <B> where <C>"
+    # Extract any filters from the user input, such as specific column values (e.g., brand, category)
+    filters = extract_filters(tokens, column_names)
+
+    # Handle aggregation (e.g., average) and SQL query construction
     if "average" in tokens or "avg" in tokens:
-        # Look for specific quantitative columns like sales and quantity
         for quant in quantitative_columns:
             for cat in categorical_columns:
-                if quant in mapped_columns and cat in mapped_columns:
-                    # Build the SQL query with optional brand filtering
-                    if brand_name:
-                        sql_query = f"SELECT {cat}, AVG(sales) as average_sales, AVG(quantity) as average_quantity FROM {table_name} WHERE brand = '{brand_name}' GROUP BY {cat}, season"
-                        nat_lang_query = f"Average sales and quantity by {cat} and season where brand is '{brand_name}'"
-                    else:
-                        sql_query = f"SELECT {cat}, AVG(sales) as average_sales, AVG(quantity) as average_quantity FROM {table_name} GROUP BY {cat}, season"
-                        nat_lang_query = f"Average sales and quantity by {cat} and season"
-
-                    return nat_lang_query, sql_query
-
+                # Build SQL query with optional filtering
+                sql_query = f"SELECT {cat}, AVG({quant}) as average_{quant} FROM {table_name}"
+                nat_lang_query = f"Average {quant} by {cat}"
+                
+                # Apply filters if present (e.g., filtering by specific column values)
+                filter_conditions = []
+                for col, value in filters.items():
+                    filter_conditions.append(f"{col} = '{value}'")
+                
+                if filter_conditions:
+                    sql_query += " WHERE " + " AND ".join(filter_conditions)
+                    nat_lang_query += " where " + " and ".join([f"{col} is '{value}'" for col, value in filters.items()])
+                
+                sql_query += f" GROUP BY {cat}"
+                return nat_lang_query, sql_query
+    
     # Handle filters like "greater than", "less than", etc.
     if "greater" in tokens or "less" in tokens or "equals" in tokens:
         for quant in quantitative_columns:
