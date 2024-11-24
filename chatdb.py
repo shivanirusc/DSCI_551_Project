@@ -420,36 +420,44 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
     # Extract any filters from the user input, such as specific column values (e.g., brand, category)
     filters = extract_filters(tokens, column_names)
 
-    # Handle aggregation (e.g., average) and SQL query construction
-    if "average" in tokens or "avg" in tokens:
-        # Start building the SQL query
-        sql_query = f"SELECT {', '.join(categorical_columns)}, "
-        
-        # Aggregate over quantitative columns (sales and quantity in this case)
-        aggregation_parts = []
-        for quant in quantitative_columns:
-            aggregation_parts.append(f"AVG({quant}) as average_{quant}")
-        
-        sql_query += ", ".join(aggregation_parts)
-        sql_query += f" FROM {table_name}"
-        
-        # Apply filters if present (e.g., filtering by specific column values)
-        filter_conditions = []
-        for col, value in filters.items():
-            filter_conditions.append(f"{col} = '{value}'")
-        
-        if filter_conditions:
-            sql_query += " WHERE " + " AND ".join(filter_conditions)
-        
-        # Group by only the relevant categorical columns (e.g., category, season)
-        sql_query += f" GROUP BY {', '.join(categorical_columns)}"
-        
-        # Returning the natural language query and SQL query
-        nat_lang_query = f"Average {' and '.join(quantitative_columns)} by {' and '.join(categorical_columns)}"
-        if filters:
-            nat_lang_query += " where " + " and ".join([f"{col} is '{value}'" for col, value in filters.items()])
-        
-        return nat_lang_query, sql_query
+    # Check for common aggregation keywords like "average", "avg"
+    if 'average' in tokens or 'avg' in tokens:
+        aggregation_type = 'AVG'
+    else:
+        return "Aggregation type not recognized", None
+
+    # Find relevant columns from user input
+    group_by_columns = [col for col in column_names if col.lower() in tokens]
+    
+    # If no group-by columns found, assume the user meant to group by a category (like 'category')
+    if not group_by_columns:
+        group_by_columns = ['category']
+
+    # Build the SQL SELECT part of the query
+    select_columns = [f"{aggregation_type}({col}) AS average_{col}" for col in quantitative_columns]
+
+    # Build the SQL WHERE part for any filters
+    where_clauses = []
+    if "where" in tokens:
+        # Extract filter conditions (like 'price > 100')
+        where_start = tokens.index('where') + 1
+        where_conditions = " ".join(tokens[where_start:])
+        where_clauses.append(where_conditions)
+
+    # Construct the final SQL query
+    sql_query = f"SELECT {', '.join(group_by_columns)}, {', '.join(select_columns)} FROM {table_name}"
+
+    if where_clauses:
+        sql_query += " WHERE " + " AND ".join(where_clauses)
+
+    sql_query += f" GROUP BY {', '.join(group_by_columns)}"
+    
+    # Return a basic natural language version of the query and the SQL query
+    nat_lang_query = f"Average {', '.join(quantitative_columns)} by {', '.join(group_by_columns)}"
+    if where_clauses:
+        nat_lang_query += " where " + " and ".join(where_clauses)
+
+    return nat_lang_query, sql_query
     
     # Handle filters like "greater than", "less than", etc.
     if "greater" in tokens or "less" in tokens or "equals" in tokens:
