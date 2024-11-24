@@ -441,7 +441,7 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
         if filter_conditions:
             sql_query += " WHERE " + " AND ".join(filter_conditions)
         
-        # Group by only the relevant categorical columns
+        # Group by only the relevant categorical columns (e.g., category, season)
         sql_query += f" GROUP BY {', '.join(categorical_columns)}"
         
         # Returning the natural language query and SQL query
