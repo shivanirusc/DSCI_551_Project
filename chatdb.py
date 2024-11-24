@@ -422,6 +422,7 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
 
     # Handle aggregation (e.g., average) and SQL query construction
     if "average" in tokens or "avg" in tokens:
+        # Start building the SQL query
         sql_query = f"SELECT {', '.join(categorical_columns)}, "
         
         # Aggregate over quantitative columns (sales and quantity in this case)
@@ -440,6 +441,7 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
         if filter_conditions:
             sql_query += " WHERE " + " AND ".join(filter_conditions)
         
+        # Group by only the relevant categorical columns
         sql_query += f" GROUP BY {', '.join(categorical_columns)}"
         
         # Returning the natural language query and SQL query
