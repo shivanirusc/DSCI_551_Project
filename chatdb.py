@@ -356,6 +356,25 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
     # Categorize columns based on the dataframe
     categorical_columns, quantitative_columns = categorize_columns(dataframe)
 
+    # Handle JOINs
+    join_keywords = ["join", "inner join", "left join", "right join", "full join", "cross join"]
+    join_type = next((kw for kw in join_keywords if kw in tokens), None)
+
+    if join_type:
+        # Extract tables and join conditions
+        if "on" in tokens:
+            join_table_idx = tokens.index(join_type) + 1
+            on_idx = tokens.index("on")
+            join_table = tokens[join_table_idx]
+            join_condition = " ".join(tokens[on_idx + 1:])
+
+            if join_type == "join":
+                join_type = "INNER JOIN"  # Default to INNER JOIN if not specified
+
+            sql_query = f"SELECT * FROM {table_name} {join_type} {join_table} ON {join_condition}"
+            nat_lang_query = f"{join_type} {table_name} with {join_table} on {join_condition}"
+            return nat_lang_query, sql_query
+    
     # # Example query pattern: "total <A> by <B>"
     # if "total" in tokens or "sum" in tokens:
     #     for quant in quantitative_columns:
