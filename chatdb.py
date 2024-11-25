@@ -304,17 +304,12 @@ def process_input(user_input):
     return tokens
 
 # Function to map the tokens dynamically to column names in the dataset
-def map_columns(tokens, quantitative_columns):
-    # Fuzzy match or search for terms in the quantitative columns
-    column = None
+def map_columns(tokens, columns):
     for token in tokens:
-        for col in quantitative_columns:
-            if token in col.lower():  # Match case-insensitive
-                column = col
-                break
-        if column:  # Break out of outer loop if column is found
-            break
-    return column
+        for column in columns:
+            if token.lower() in column.lower():
+                return column
+    return None
 
 # Example function for categorizing columns
 def categorize_columns(dataframe):
@@ -333,40 +328,15 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     st.write(f"quantitative_columns extracted: {quantitative_columns}")
     
     
-    # Handle sum query with conditions: "sum of <A> where <B>"
     if "sum" in tokens or "total" in tokens:
-        column = map_columns(tokens, quantitative_columns)  # Map tokens to columns
-        
-        if column:  # If a column is found
-            # Check for conditions (e.g., where quantity > 100)
-            if "where" in tokens:
-                where_index = tokens.index("where")
-                condition_tokens = tokens[where_index + 1:]
-
-                # Check for common comparison operators (greater, less, etc.)
-                operators = ["greater", "less", "equal", "not"]
-                condition = ""
-                value = None
-
-                for i, token in enumerate(condition_tokens):
-                    if token in operators:
-                        operator = token
-                        value = condition_tokens[i + 1]
-                        if operator == "greater":
-                            condition = f"{column} > {value}"
-                        elif operator == "less":
-                            condition = f"{column} < {value}"
-                        elif operator == "equal":
-                            condition = f"{column} = {value}"
-                        elif operator == "not":
-                            if condition_tokens[i + 1] == "equal":
-                                condition = f"{column} != {value}"
-                        break
-                    
-                sql_query = f"SELECT SUM({column}) as total_{column} FROM {table_name} WHERE {condition}"
-                nat_lang_query = f"Sum of {column} where {condition}"
-                return nat_lang_query, sql_query
-
+    column = map_columns(tokens, quantitative_columns)  # Identify the quantitative column
+    group_by_column = map_columns(tokens, categorical_columns)  # Identify the categorical column
+    
+    if column and group_by_column:  # Both columns must exist
+        sql_query = f"SELECT {group_by_column}, SUM({column}) as total_{column} FROM {table_name} GROUP BY {group_by_column}"
+        nat_lang_query = f"Sum of {column} grouped by {group_by_column}"
+        return nat_lang_query, sql_query
+    
     # Step 4: Handle 'count' queries
     if "count" in tokens:
         for cat in categorical_columns:
