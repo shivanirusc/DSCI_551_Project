@@ -307,18 +307,6 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     nat_lang_query = f"Rows where {where_clause}"
     return nat_lang_query, sql_query
 
-    # Handle wildcard searches
-    if "contains" in tokens or "like" in tokens:
-        combined_tokens = generate_combined_tokens(tokens)
-        for cat in categorical_columns:
-            if cat.lower() in combined_tokens:
-                # Extract the search value
-                search_value = next((token for token in tokens if token not in ["contains", "like"]), None)
-                if search_value:
-                    sql_query = f"SELECT * FROM {table_name} WHERE {cat} LIKE '%{search_value}%'"
-                    nat_lang_query = f"Rows where {cat} contains '{search_value}'"
-                    return nat_lang_query, sql_query
-
     # Handle custom aggregations
     if "total" in tokens and "average" in tokens:
         combined_tokens = generate_combined_tokens(tokens)
@@ -332,27 +320,6 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
             nat_lang_query = f"Total {sum_column} and average {avg_column} grouped by {group_by_column}"
             return nat_lang_query, sql_query
 
-
-    # Handle range queries
-    ranges = []
-    combined_tokens = generate_combined_tokens(tokens)
-    i = 0
-    while i < len(tokens):
-        if tokens[i] == "between" and i + 2 < len(tokens):
-            column = next((col for col in quantitative_columns if col.lower() in combined_tokens), None)
-            start, end = tokens[i + 1], tokens[i + 2]
-        
-            # Validate start and end as numbers
-            if column and re.match(r'^\d+(\.\d+)?$', start) and re.match(r'^\d+(\.\d+)?$', end):
-                ranges.append(f"{column} BETWEEN {start} AND {end}")
-                i += 2
-        i += 1
-
-    if ranges:
-        where_clause = " AND ".join(ranges)
-        sql_query = f"SELECT * FROM {table_name} WHERE {where_clause}"
-        nat_lang_query = f"Rows where {where_clause}"
-        return nat_lang_query, sql_query
 
     # Fallback in case no match is found
     return "Query could not be interpreted. Please try rephrasing.", ""
