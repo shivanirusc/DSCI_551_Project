@@ -448,7 +448,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     #         return nat_lang_query, sql_query
 
     tokens1 = tokenize_with_operators(user_input)
-    
+    st.write(f"Tokens1 extracted: {tokens1}")
     # Initialize components for SQL conditions
     conditions = []
     operators = {
