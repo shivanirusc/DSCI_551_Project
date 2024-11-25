@@ -338,7 +338,6 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
         if column and group_by_column:  # Ensure both column mappings exist
             sql_query = f"SELECT {group_by_column}, SUM({column}) as total_{column} FROM {table_name} GROUP BY {group_by_column}"
             nat_lang_query = f"Sum of {column} grouped by {group_by_column}"
-            st.write(f"Generated query: {sql_query}")
             return nat_lang_query, sql_query
     
     # Step 4: Handle 'count' queries
@@ -348,7 +347,6 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
          if any(token in cat.lower() for token in tokens):
              sql_query = f"SELECT {cat}, COUNT(*) as count_{cat} FROM {table_name} GROUP BY {cat}"
              nat_lang_query = f"Count of {cat}"
-             st.write(f"Generated query: {sql_query}")
              return nat_lang_query, sql_query
     
     # Step 5: Handle 'average' or 'avg' queries
