@@ -356,75 +356,138 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
     # Categorize columns based on the dataframe
     categorical_columns, quantitative_columns = categorize_columns(dataframe)
 
-    # Handle JOINs
-    join_keywords = ["join", "inner join", "left join", "right join", "full join", "cross join"]
-    join_type = next((kw for kw in join_keywords if kw in tokens), None)
+    # Check if "total" is mentioned in the query
+    if "total" in tokens:
+        for quant in quantitative_columns:  # Loop through all quantitative columns (e.g., sales_amount)
+            for cat in categorical_columns:  # Loop through all categorical columns (e.g., product_category)
+                # Check if both quantitative and categorical columns are mentioned in the query
+                if quant in tokens and cat in tokens:
+                    # Generate SQL query using template
+                    sql_query = (
+                        f"SELECT {cat}, SUM({quant}) AS total_{quant} "
+                        f"FROM {table_name} GROUP BY {cat}"
+                    )
+                    # Generate natural language query
+                    nat_lang_query = f"Total {quant} by {cat}"
+                    return nat_lang_query, sql_query
+#     # Handle JOINs
+#     join_keywords = ["join", "inner join", "left join", "right join", "full join", "cross join"]
+#     join_type = next((kw for kw in join_keywords if kw in tokens), None)
 
-    if join_type:
-        if "on" in tokens:
-            join_table_idx = tokens.index(join_type) + 1
-            on_idx = tokens.index("on")
-            join_table = tokens[join_table_idx]
-            join_condition = " ".join(tokens[on_idx + 1:])
+#     if join_type:
+#         if "on" in tokens:
+#             join_table_idx = tokens.index(join_type) + 1
+#             on_idx = tokens.index("on")
+#             join_table = tokens[join_table_idx]
+#             join_condition = " ".join(tokens[on_idx + 1:])
 
-            if join_type == "join":
-                join_type = "INNER JOIN"  # Default to INNER JOIN if not specified
+#             if join_type == "join":
+#                 join_type = "INNER JOIN"  # Default to INNER JOIN if not specified
 
-            sql_query = f"SELECT * FROM {table_name} {join_type} {join_table} ON {join_condition}"
-            nat_lang_query = f"{join_type} {table_name} with {join_table} on {join_condition}"
-            return nat_lang_query, sql_query
+#             sql_query = f"SELECT * FROM {table_name} {join_type} {join_table} ON {join_condition}"
+#             nat_lang_query = f"{join_type} {table_name} with {join_table} on {join_condition}"
+#             return nat_lang_query, sql_query
 
-   # Handle aggregate functions: SUM, AVG, MAX, COUNT
-    aggregate_keywords = {
-        "sum": "SUM", "total": "SUM", "average": "AVG", "avg": "AVG",
-        "max": "MAX", "count": "COUNT"
-    }
+#    aggregate_keywords = {
+#     "sum": "SUM", "total": "SUM", "average": "AVG", "avg": "AVG",
+#     "max": "MAX", "count": "COUNT"
+# }
 
-    for keyword, agg_func in aggregate_keywords.items():
-        if keyword in tokens:
-            for quant in quantitative_columns:
-                for cat in categorical_columns:
-                    if quant in tokens and cat in tokens:
-                        sql_query = f"SELECT {cat}, {agg_func}({quant}) as {agg_func.lower()}_{quant} FROM {table_name} GROUP BY {cat}"
-                        nat_lang_query = f"{agg_func} {quant} by {cat}"
-                        return nat_lang_query, sql_query
+# for keyword, agg_func in aggregate_keywords.items():
+#     if keyword in tokens:
+#         for quant in quantitative_columns:
+#             for cat in categorical_columns:
+#                 if quant in tokens and cat in tokens:
+#                     sql_query = (
+#                         f"SELECT {cat}, {agg_func}({quant}) AS {agg_func.lower()}_{quant} "
+#                         f"FROM {table_name} GROUP BY {cat}"
+#                     )
+#                     nat_lang_query = f"{agg_func.capitalize()} of {quant} grouped by {cat}"
+#                     return nat_lang_query, sql_query
 
-    # Handle "WHERE" conditions
-    if "where" in tokens:
-        # Determine if the user wants to filter a specific column
-        condition = ' '.join(tokens[tokens.index("where") + 1:])
-        for quant in quantitative_columns:
-            if quant in tokens:
-                sql_query = f"SELECT {quant} FROM {table_name} WHERE {condition}"
-                nat_lang_query = f"Sales data where {condition}"
-                return nat_lang_query, sql_query
-        sql_query = f"SELECT * FROM {table_name} WHERE {condition}"
-        nat_lang_query = f"Data where {condition}"
-        return nat_lang_query, sql_query
+# # Handle "WHERE" conditions
+# if "where" in tokens:
+#     condition = ' '.join(tokens[tokens.index("where") + 1:])
+#     # Validate and refine condition
+#     for quant in quantitative_columns + categorical_columns:
+#         if quant in tokens:
+#             condition = condition.replace(quant, f"{quant}")  # Ensure valid column mapping
+#     sql_query = f"SELECT * FROM {table_name} WHERE {condition}"
+#     nat_lang_query = f"Filtered data where {condition}"
+#     return nat_lang_query, sql_query
 
-    # Handle "TOP N" queries
-    if "top" in tokens and "by" in tokens:
-        try:
-            n_index = tokens.index("top") + 1
-            n_value = int(tokens[n_index])  # Assume the next token is the value of N
+# # Handle "TOP N" queries
+# if "top" in tokens and "by" in tokens:
+#     try:
+#         n_index = tokens.index("top") + 1
+#         n_value = int(tokens[n_index])  # Extract the N value (e.g., 5 in "top 5")
+#         for quant in quantitative_columns:
+#             for cat in categorical_columns:
+#                 if quant in tokens and cat in tokens:
+#                     sql_query = (
+#                         f"SELECT {cat}, SUM({quant}) AS total_{quant} "
+#                         f"FROM {table_name} GROUP BY {cat} "
+#                         f"ORDER BY total_{quant} DESC LIMIT {n_value}"
+#                     )
+#                     nat_lang_query = f"Top {n_value} {cat} by total {quant}"
+#                     return nat_lang_query, sql_query
+#     except (IndexError, ValueError):
+#         return "Please specify a valid number after 'top'.", None
+# aggregate_keywords = {
+#     "sum": "SUM", "total": "SUM", "average": "AVG", "avg": "AVG",
+#     "max": "MAX", "count": "COUNT"
+# }
 
-            for quant in quantitative_columns:
-                for cat in categorical_columns:
-                    if quant in tokens and cat in tokens:
-                        sql_query = f"SELECT {cat}, SUM({quant}) as total_{quant} FROM {table_name} GROUP BY {cat} ORDER BY total_{quant} DESC LIMIT {n_value}"
-                        nat_lang_query = f"Top {n_value} {cat} by {quant}"
-                        return nat_lang_query, sql_query
-        except (IndexError, ValueError):
-            return "Please specify a valid number after 'top'.", None
+# for keyword, agg_func in aggregate_keywords.items():
+#     if keyword in tokens:
+#         for quant in quantitative_columns:
+#             for cat in categorical_columns:
+#                 if quant in tokens and cat in tokens:
+#                     sql_query = (
+#                         f"SELECT {cat}, {agg_func}({quant}) AS {agg_func.lower()}_{quant} "
+#                         f"FROM {table_name} GROUP BY {cat}"
+#                     )
+#                     nat_lang_query = f"{agg_func.capitalize()} of {quant} grouped by {cat}"
+#                     return nat_lang_query, sql_query
 
-    # Handle grouped queries with conditions
-    if "group" in tokens and "by" in tokens:
-        group_column = next((col for col in categorical_columns if col.lower() in tokens), None)
-        condition_column = next((col for col in quantitative_columns if col.lower() in tokens), None)
-        if group_column and condition_column:
-            sql_query = f"SELECT {group_column}, SUM({condition_column}) as total_{condition_column} FROM {table_name} GROUP BY {group_column}"
-            nat_lang_query = f"Group by {group_column}, total {condition_column}"
-            return nat_lang_query, sql_query
+# # Handle "WHERE" conditions
+# if "where" in tokens:
+#     condition = ' '.join(tokens[tokens.index("where") + 1:])
+#     # Validate and refine condition
+#     for quant in quantitative_columns + categorical_columns:
+#         if quant in tokens:
+#             condition = condition.replace(quant, f"{quant}")  # Ensure valid column mapping
+#     sql_query = f"SELECT * FROM {table_name} WHERE {condition}"
+#     nat_lang_query = f"Filtered data where {condition}"
+#     return nat_lang_query, sql_query
+
+# # Handle "TOP N" queries
+# if "top" in tokens and "by" in tokens:
+#     try:
+#         n_index = tokens.index("top") + 1
+#         n_value = int(tokens[n_index])  # Extract the N value (e.g., 5 in "top 5")
+#         for quant in quantitative_columns:
+#             for cat in categorical_columns:
+#                 if quant in tokens and cat in tokens:
+#                     sql_query = (
+#                         f"SELECT {cat}, SUM({quant}) AS total_{quant} "
+#                         f"FROM {table_name} GROUP BY {cat} "
+#                         f"ORDER BY total_{quant} DESC LIMIT {n_value}"
+#                     )
+#                     nat_lang_query = f"Top {n_value} {cat} by total {quant}"
+#                     return nat_lang_query, sql_query
+#     except (IndexError, ValueError):
+#         return "Please specify a valid number after 'top'.", None
+
+
+#     # Handle grouped queries with conditions
+#     if "group" in tokens and "by" in tokens:
+#         group_column = next((col for col in categorical_columns if col.lower() in tokens), None)
+#         condition_column = next((col for col in quantitative_columns if col.lower() in tokens), None)
+#         if group_column and condition_column:
+#             sql_query = f"SELECT {group_column}, SUM({condition_column}) as total_{condition_column} FROM {table_name} GROUP BY {group_column}"
+#             nat_lang_query = f"Group by {group_column}, total {condition_column}"
+#             return nat_lang_query, sql_query
     
     # If no specific match, return a generic query
     return "Query could not be interpreted. Please try rephrasing.", None
