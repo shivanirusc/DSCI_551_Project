@@ -30,6 +30,26 @@ mongo_client = MongoClient("mongodb://localhost:27017/")
 mongo_db = mongo_client["chat_db"]
 mongodb_list = []
 
+# Check if file type is allowed
+def allowed_file(filename):
+    return filename.lower().endswith(('.csv', '.json'))
+
+# Dataset Upload Section
+st.sidebar.subheader("Upload Dataset")
+file = st.sidebar.file_uploader("Choose a CSV or JSON file:", type=["csv", "json"])
+uploaded_columns = []
+collection_name = ""
+data = None
+
+if file:
+    filename = file.name
+    if allowed_file(filename):
+        data = pd.read_csv(file) if filename.endswith('.csv') else pd.read_json(file)
+        uploaded_columns = store_in_mongodb(data, filename)
+        collection_name = filename[:-5]
+        st.success(f"Dataset uploaded successfully! Columns in your data: {uploaded_columns}")
+    else:
+        st.error("Unsupported file type. Please upload a CSV or JSON file.")
 
 # -------------------------------- NLP PORTION --------------------------------
 # Download NLTK resources
