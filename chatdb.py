@@ -102,18 +102,13 @@ def tokenize_with_operators(user_input):
 def generate_sql_query(user_input, uploaded_columns, table_name, data):
     # Step 1: Process the input query using NLP processing (basic tokenization and stemming)
     tokens = process_input(user_input)
-    
-    st.write(f"Tokens extracted: {tokens}")
 
     # Step 2: Dynamically categorize columns in the DataFrame
     categorical_columns, quantitative_columns = categorize_columns(data)
-    st.write(f"categorical_columns extracted: {categorical_columns}")
-    st.write(f"quantitative_columns extracted: {quantitative_columns}")
 
     # Step 3: Combine tokens to handle multi-word column names
     combined_tokens = [' '.join(tokens[i:j+1]) for i in range(len(tokens)) for j in range(i, len(tokens))]
     combined_tokens = [token.replace(' ', '_').lower() for token in combined_tokens]  # Format like column names
-    st.write(f"Combined Tokens: {combined_tokens}")
 
     # Step 4: Handle Top Aggregation Queries dynamically
     if any(word in tokens for word in ["highest", "top"]):
@@ -132,15 +127,10 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
                 cat_col = cat
                 break
 
-        # Debugging: Ensure columns are matched correctly
-        st.write(f"Matched Quantitative Column: {quant_col}")
-        st.write(f"Matched Categorical Column: {cat_col}")
-
         # Generate SQL query if both column mappings are found
         if quant_col and cat_col:
             sql_query = f"SELECT {cat_col}, MAX({quant_col}) as max_{quant_col} FROM {table_name} GROUP BY {cat_col}"
             nat_lang_query = f"Top {quant_col} by {cat_col}"
-            st.write(f"Generated SQL Query: {sql_query}")
             return nat_lang_query, sql_query
     
     # Handle sum and total queries
@@ -325,15 +315,13 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     return "Query could not be interpreted. Please try rephrasing.", ""
 
 # Streamlit app setup
-st.title("ChatDB: Interactive Query Assistant")
-st.write(
-    "Upload your dataset (CSV or JSON), and ask ChatDB to generate SQL queries for your data using natural language."
-)
+st.title("ChatDB: Interactive Query Assistant 🤖")
+st.write("Upload your dataset and interact with it using natural language queries!")
 
-# File upload section
-file = st.file_uploader("Choose a CSV or JSON file to populate your database:", type=["csv", "json"])
+file = st.sidebar.file_uploader("Upload a CSV or JSON file:", type=["csv", "json"])
 uploaded_columns = []
 table_name = ""
+data = None
 
 if file:
     filename = file.name
@@ -347,75 +335,43 @@ if file:
             uploaded_columns = store_in_mongodb(data, filename)
             table_name = filename[:-5]
 
-        st.write(f"**Uploaded Successfully!** Columns in your data: {uploaded_columns}")
+        st.success(f"Dataset uploaded successfully! Columns: {uploaded_columns}")
     else:
-        st.write("**Unsupported file type. Please upload a CSV or JSON file.**")
+        st.error("Unsupported file type. Upload a CSV or JSON file.")
 
-# Chat interface
-st.write("---")
-st.write("**Chat with ChatDB:**")
-user_input = st.text_input("Type your query here:")
+if data is not None:
+    st.subheader("Chat with ChatDB 💬")
+    user_input = st.text_input("Type your query here:")
 
-if user_input and uploaded_columns:
-    # Handle "example sql query"
-    if user_input.lower() == "example sql query":
-        if table_name:  # Ensure a table is available
-            # Categorize columns
-            categorical, quantitative = categorize_columns(data)
-            if categorical and quantitative:
-                # Generate sample queries
-                sample_queries = generate_sample_queries(table_name, categorical, quantitative)
-
-                # Format the output
-                st.write("Here are some example SQL queries:")
-                for sample_query in sample_queries:
-                    st.code(sample_query)
-            else:
-                st.write("Your dataset does not have the necessary columns for sample SQL queries.")
-        else:
-            st.write("Please upload a dataset first to generate example queries.")
-        
-            
-    else:
+    if user_input:
         nat_lang_query, sql_query = generate_sql_query(user_input, uploaded_columns, table_name, data)
 
+        if "chat_history" not in st.session_state:
+            st.session_state["chat_history"] = []
+
+        st.session_state["chat_history"].append({
+            "user_input": user_input,
+            "nat_lang_query": nat_lang_query,
+            "sql_query": sql_query
+        })
+
+        st.write("**Chat History**")
+        for chat in st.session_state["chat_history"]:
+            st.write(f"**You:** {chat['user_input']}")
+            st.write(f"**ChatDB:** {chat['nat_lang_query']}")
+            st.code(chat['sql_query'])
+
+        st.write("**Query Explanation 📝**")
         if sql_query:
-            st.write(f"**Natural Language Query:** {nat_lang_query}")
-            st.code(sql_query)
-
-            # Execute the query on SQLite database
-            if filename.endswith('.csv'):
-                conn = sqlite3.connect("chatdb_sql.db")
-                result = pd.read_sql_query(sql_query, conn)
-                st.write("**Query Result from SQLite:**")
-                st.dataframe(result)
-
-            # Execute the query on MongoDB database
-            elif filename.endswith('.json'):
-                collection = mongo_db[table_name]
-                pipeline = [
-                    {"$group": {"_id": f"${processed_tokens[1]}", f"total_{processed_tokens[3]}": {"$sum": f"${processed_tokens[3]}"}}}
-                ]
-                result = list(collection.aggregate(pipeline))
-                result_df = pd.DataFrame(result)
-                st.write("**Query Result from MongoDB:**")
-                st.dataframe(result_df)
-
+            st.write(f"This query processes `{table_name}` with grouping or filtering based on input conditions.")
         else:
-            st.write(nat_lang_query)
-elif user_input:
-    st.write("Please upload a dataset first.")
+            st.error(nat_lang_query)
 
-# Display chat history
-if 'chat_history' not in st.session_state:
-    st.session_state['chat_history'] = []
-
-if user_input:
-    if user_input.lower() == "example sql query":
-        st.session_state['chat_history'].append({"user": user_input, "response": sample_query})
-    else:
-        st.session_state['chat_history'].append({"user": user_input, "response": nat_lang_query if sql_query else "Unable to generate query."})
-
-for chat in st.session_state['chat_history']:
-    st.write(f"**You:** {chat['user']}")
-    st.write(f"**ChatDB:** {chat['response']}")
+        if sql_query:
+            conn = sqlite3.connect("chatdb_sql.db")
+            try:
+                result = pd.read_sql_query(sql_query, conn)
+                st.write("**Query Results 📊**")
+                st.dataframe(result)
+            except Exception as e:
+                st.error(f"Error executing SQL query: {e}")
