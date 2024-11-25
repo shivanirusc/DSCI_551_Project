@@ -490,7 +490,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
         elif "and" in conditions:
             where_clause = " AND ".join(conditions)  # Default to AND
     else:
-        where_clause = " OR ".join(conditions)
+        where_clause = " ".join(conditions)
 
     # Generate SQL query
     if where_clause:
