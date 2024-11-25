@@ -480,15 +480,14 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
         elif token in conjunctions:
             if conditions and token.lower() in conjunctions:
                 conditions.append(token.upper())
-                st.write(f"{token.upper()}")
         
         i += 1
         
     if len(conditions) > 1:
-        # if "OR" in conditions:
-        #     where_clause = " OR ".join(conditions)  # Join with OR if explicit OR exists
-        # elif "AND" in conditions:
-        where_clause = " AND ".join(conditions)  # Default to AND
+        if "OR" in conditions[0]:
+            where_clause = " OR ".join(conditions)  # Join with OR if explicit OR exists
+        elif "AND" in conditions[0]:
+              where_clause = " AND ".join(conditions)  # Default to AND
     else:
         where_clause = " ".join(conditions)
 
