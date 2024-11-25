@@ -359,56 +359,100 @@ if data is not None:
     user_input = st.text_input("Type your query here:")
 
     if user_input and uploaded_columns:
-        nat_lang_query, query = generate_sql_query(user_input, uploaded_columns, table_name, data)
-
-        # Add to chat history only if a valid query is generated
-        if query:
-            # Initialize chat history if not already present
-            if "chat_history" not in st.session_state:
-                st.session_state["chat_history"] = []
-
-            # Add current query and response to chat history
-            st.session_state["chat_history"].append({
-                "user_input": user_input,
-                "nat_lang_query": nat_lang_query,
-                "query": query
-            })
         
-        st.write("---")
-        st.subheader("Generated Query 🔍")
-        if query:
-            st.markdown(f"**Natural Language Interpretation:** `{nat_lang_query}`")
-            st.code(query)
-        else:
-            st.error("No query generated. Please refine your input.")
+        # Handle "example sql query"
+        if user_input.lower() == "example sql query":
+            categorical, quantitative = categorize_columns(data)
         
-        # Explanation Section
-        st.write("---")
-        st.subheader("Query Explanation 📝")
-        if query:
-            if filetype == "csv" and isinstance(query, str):
-                explanation = "This SQL query performs the following operations:\n\n"
-                if "GROUP BY" in query:
-                    explanation += "- Groups the data by one or more categorical columns.\n"
-                if "SUM" in query:
-                    explanation += "- Calculates the total for a specified numerical column.\n"
-                if "MAX" in query:
-                    explanation += "- Finds the maximum value in a numerical column.\n"
-                if "AVG" in query:
-                    explanation += "- Computes the average value of a numerical column.\n"
-                if "WHERE" in query:
-                    explanation += "- Filters the data based on specific conditions (e.g., 'less than' or 'greater than').\n"
-                explanation += f"\nThe query retrieves data from the `{table_name}` table."
-            elif filetype == "json" and isinstance(query, list):
-                explanation = "This NoSQL query uses an aggregation pipeline to:\n\n"
-                explanation += "- Filter documents based on the specified criteria.\n"
-                explanation += "- Group the data and compute metrics such as sum, average, or maximum.\n"
-                explanation += f"\nThe query operates on the `{table_name}` collection in MongoDB."
+            # Generate sample queries
+            sample_queries = generate_sample_queries(table_name, categorical, quantitative)
+
+            if sample_queries != 0:
+                # Format the output
+                st.write("Here are some example SQL queries:")
+                for sample_query, nl_query in sample_queries:
+                    # Print each query
+                    st.write(nl_query)
+                    st.code(sample_query)
+                    # Executes query and shows result
+                    execute_query(sample_query)
             else:
-                explanation = "Unable to explain the query."
-            st.write(explanation)
+                st.write('Data does not have necessary columns to product output')
+        
+        # Handle cases with specified language construct
+        elif "example sql query with" in user_input.lower():
+            # Extract the construct from the user input
+            construct = user_input.lower().replace("example sql query with", "").strip()
+
+            # Categorize columns into categorical and quantitative
+            categorical, quantitative = categorize_columns(data)
+
+            # Generate queries based on the specified construct
+            construct_queries = generate_construct_queries(construct, table_name, categorical, quantitative)
+
+
+            if construct_queries != 0:
+                # Format the output
+                st.write(f"Here are some example SQL queries using '{construct}':")
+                for construct_query, nl_query in construct_queries:
+                    st.write(nl_query)
+                    st.code(construct_query)
+                    # Executes query and shows result
+                    execute_query(construct_query)
+            else:
+                st.write("Please speciffy a construct among the following: 'group by', 'where', 'having', 'order by', 'aggregation'" )
+
         else:
-            st.error(nat_lang_query)
+            nat_lang_query, query = generate_sql_query(user_input, uploaded_columns, table_name, data)
+
+            # Add to chat history only if a valid query is generated
+            if query:
+                # Initialize chat history if not already present
+                if "chat_history" not in st.session_state:
+                    st.session_state["chat_history"] = []
+
+                # Add current query and response to chat history
+                st.session_state["chat_history"].append({
+                    "user_input": user_input,
+                    "nat_lang_query": nat_lang_query,
+                    "query": query
+                })
+            
+            st.write("---")
+            st.subheader("Generated Query 🔍")
+            if query:
+                st.markdown(f"**Natural Language Interpretation:** `{nat_lang_query}`")
+                st.code(query)
+            else:
+                st.error("No query generated. Please refine your input.")
+            
+            # Explanation Section
+            st.write("---")
+            st.subheader("Query Explanation 📝")
+            if query:
+                if filetype == "csv" and isinstance(query, str):
+                    explanation = "This SQL query performs the following operations:\n\n"
+                    if "GROUP BY" in query:
+                        explanation += "- Groups the data by one or more categorical columns.\n"
+                    if "SUM" in query:
+                        explanation += "- Calculates the total for a specified numerical column.\n"
+                    if "MAX" in query:
+                        explanation += "- Finds the maximum value in a numerical column.\n"
+                    if "AVG" in query:
+                        explanation += "- Computes the average value of a numerical column.\n"
+                    if "WHERE" in query:
+                        explanation += "- Filters the data based on specific conditions (e.g., 'less than' or 'greater than').\n"
+                    explanation += f"\nThe query retrieves data from the `{table_name}` table."
+                elif filetype == "json" and isinstance(query, list):
+                    explanation = "This NoSQL query uses an aggregation pipeline to:\n\n"
+                    explanation += "- Filter documents based on the specified criteria.\n"
+                    explanation += "- Group the data and compute metrics such as sum, average, or maximum.\n"
+                    explanation += f"\nThe query operates on the `{table_name}` collection in MongoDB."
+                else:
+                    explanation = "Unable to explain the query."
+                st.write(explanation)
+            else:
+                st.error(nat_lang_query)
 
         # Results Section
         st.write("---")

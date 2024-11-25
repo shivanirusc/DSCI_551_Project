@@ -11,6 +11,7 @@ import random
 from tabulate import tabulate
 import json
 import numpy as np
+import streamlit as st
 
 # some learning notes as I have been going:
 # don't cover cases where an attribute is a list or dict. These could be queries all on their own. This could be something we add for 
@@ -158,6 +159,7 @@ def get_mongo_queries_nat(tokens, cat_cols, quant_cols, unique_cols, range_, col
     greater_tokens = ["greater", "more", "than", "above"]
     less_tokens = ["less", "fewer", "below"]
     count_tokens = ["count", "number", "counts"]
+    order_tokens = ["ascending", "descending", "order", "sort"]
     cat_chosen = list(set(token.lower() for token in tokens) & set(col.lower() for col in cat_cols))
     quant_chosen = list(set(token.lower() for token in tokens) & set(col.lower() for col in quant_cols))
     unique_chosen = list(set(token.lower() for token in tokens) & set(col.lower() for col in unique_cols))
@@ -171,10 +173,13 @@ def get_mongo_queries_nat(tokens, cat_cols, quant_cols, unique_cols, range_, col
         except ValueError:
             continue
     # total case
+    if set(tokens) & set(order_tokens):
+        order = 'asc' if 'ascending' in tokens else 'desc'
+        sort_field = quant_chosen[0] if quant_chosen else (cat_chosen[0] if cat_chosen else None)
+        if sort_field:
+            result = gen_ordered_query(cat_cols, quant_cols, collectionName, sort_field, order=order)
+        
     if set(tokens) & set(total_tokens):
-        if len(quant_chosen) > 1 and'total' in quant_chosen:
-            quant_chosen.remove('total')
-        print(quant_chosen)
         if(cat_chosen and quant_chosen):
             result = gen_total_query(cat_cols, quant_cols, collectionName, specific_cat=cat_chosen[0], specific_quant=quant_chosen[0])
     elif set(tokens) & set(count_tokens):
@@ -252,6 +257,52 @@ def get_sample_mongo_specific(tokens, cat_cols, quant_cols, unique_cols, range_,
 # -------------------------------- MONGO MAIN CASES --------------------------------
 
 # -------------------------------- MONGO HELPER FUNCTIONS --------------------------------
+def gen_ordered_query(cat_cols, quant_cols, collectionName, sort_field, order='asc', specific_cat=None, specific_quant=None):
+    """Generates a query with ordering (ascending/descending) based on a field
+
+    Parameters
+    ----------
+    cat_cols : list
+        List of categorical variable names.
+    quant_cols : list
+        List of quantitative variable names.
+    collectionName : str
+        Name of the MongoDB collection.
+    sort_field : str
+        Field to sort by.
+    order : str
+        Sorting order, either 'asc' for ascending or 'desc' for descending.
+    specific_cat : str
+        Optional specific categorical variable to use.
+    specific_quant : str
+        Optional specific quantitative variable to use.
+
+    Returns
+    -------
+    list
+        Query result, query string, and natural language description.
+    """
+    order_val = 1 if order == 'asc' else -1
+    random_cat = specific_cat if specific_cat else random.choice(cat_cols)
+    random_quant = specific_quant if specific_quant else random.choice(quant_cols)
+    
+    nat_language = f"Order data by {sort_field} in {'ascending' if order_val == 1 else 'descending'} order"
+    collection = mongo_db[collectionName]
+    query_result = collection.aggregate([
+        {"$group": {"_id": f"${random_cat}", random_quant: {"$sum": f"${random_quant}"}}},
+        {"$sort": {sort_field: order_val}},
+        {"$project": {f"{random_cat}": "$_id", random_quant: 1, "_id": 0}},
+        {"$limit": 5}
+    ])
+    query = [
+        {"$group": {"_id": f"${random_cat}", random_quant: {"$sum": f"${random_quant}"}}},
+        {"$sort": {sort_field: order_val}},
+        {"$project": {f"{random_cat}": "$_id", random_quant: 1, "_id": 0}},
+        {"$limit": 5}
+    ]
+    query_string = f"collection.aggregate({json.dumps(query)})"
+    return [query_result, query_string, nat_language, "Order"]
+
 def gen_total_query(cat_cols, quant_cols, collectionName, specific_cat=None, specific_quant=None):
     """Generates a query in the Total <A> for each <B> Category, where A is a random quantitative variable and B is a 
         random categorical variable, prints this query in natural language and mongo format, and prints the head(5) of the output
@@ -272,8 +323,8 @@ def gen_total_query(cat_cols, quant_cols, collectionName, specific_cat=None, spe
                                     string.punctuation))
     nat_language = f"Total {random_quant} for each {random_cat} category"
     collection = mongo_db[collectionName]
-    query_result = collection.aggregate([{"$group": {"_id": f"${random_cat}", f"Total {random_quant}": {"$sum": f"${random_quant}"}}}, 
-                                         {"$project": {f"{random_cat}": "$_id", f"Total {random_quant}": 1, "_id": 0}},{"$limit": 5}])
+    query_result = collection.aggregate([{"$group": {"_id": f"${random_cat}", random_quant_var: {"$sum": f"${random_quant}"}}}, 
+                                         {"$project": {f"{random_cat}": "$_id", random_quant_var: 1, "_id": 0}},{"$limit": 5}])
     query = [{"$group": {"_id": f"${random_cat}", random_quant_var: {"$sum": f"${random_quant}"}}}, 
                                          {"$project": {f"{random_cat}": "$_id", random_quant_var: 1, "_id": 0}},{"$limit": 5}]
     query_string = f"collection.aggregate({json.dumps(query)})"
@@ -299,8 +350,8 @@ def gen_average_query(cat_cols, quant_cols, collectionName, specific_cat=None, s
                                     string.punctuation))
     nat_language = f"Average {random_quant} for each {random_cat} category"
     collection = mongo_db[collectionName]
-    query_result = collection.aggregate([{"$group": {"_id": f"${random_cat}", f"Average {random_quant}": {"$avg": f"${random_quant}"}}}, 
-                                         {"$project": {f"{random_cat}": "$_id", f"Average {random_quant}": 1, "_id": 0}},{"$limit": 5}])
+    query_result = collection.aggregate([{"$group": {"_id": f"${random_cat}", random_quant_var: {"$avg": f"${random_quant}"}}}, 
+                                         {"$project": {f"{random_cat}": "$_id", random_quant_var: 1, "_id": 0}},{"$limit": 5}])
     query = [{"$group": {"_id": f"${random_cat}", random_quant_var: {"$avg": f"${random_quant}"}}}, 
                                          {"$project": {f"{random_cat}": "$_id", random_quant_var: 1, "_id": 0}},{"$limit": 5}]
     query_string = f"collection.aggregate({json.dumps(query)})"
@@ -357,9 +408,9 @@ def gen_gtlt_query_group(cat_cols, quant_cols, range_, ineq, collectionName, spe
     ineq_val = ineq_input if ineq_input else random.randint(int(range_[random_quant][0]) + 1, int(range_[random_quant][1]) - 1)
     nat_language = f"{random_cat} with {random_quant_var} {ineq_str} than {ineq_val}"
     collection = mongo_db[collectionName]
-    query_result = collection.aggregate([{"$group": {"_id": f"${random_cat}", f"Average {random_quant}": {"$avg": f"${random_quant}"}}}, 
+    query_result = collection.aggregate([{"$group": {"_id": f"${random_cat}", random_quant_var: {"$avg": f"${random_quant}"}}}, 
                                          {"$match": {random_quant_var: {f"${ineq}": ineq_val}}},
-                                         {"$project": {f"{random_cat}": "$_id", f"Average {random_quant}": 1, "_id": 0}}
+                                         {"$project": {f"{random_cat}": "$_id", random_quant_var: 1, "_id": 0}}
                                          ,{"$limit": 5}])
     query = [{"$group": {"_id": f"${random_cat}", random_quant_var: {"$avg": f"${random_quant}"}}}, 
                                          {"$match": {random_quant_var: {f"${ineq}": ineq_val}}},
@@ -402,6 +453,98 @@ def gen_gtlt_query_unique(unique_cols, quant_cols, range_, ineq, collectionName,
     query = [{f"{random_quant}": {f"${ineq}": ineq_val}}, {f"{random_unique}": 1, f"{random_quant}": 1, "_id": 0}]
     query_string = f"collection.find({json.dumps(query)})"
     return [query_result, query_string, nat_language, ineq_str + " than"]
+
+# --------------------------------UI------------------------------------------------------
+    # Streamlit App UI
+st.title("ChatDB: MongoDB Query Assistant 🤖")
+st.write("Upload your dataset (CSV or JSON), and ask ChatDB to generate MongoDB queries using natural language.")
+
+# Sidebar Instructions
+st.sidebar.title("Instructions 📖")
+st.sidebar.markdown("""
+1. Upload your dataset (CSV or JSON).
+2. Enter a natural language query in the input box.
+3. View the generated query, explanation, and results.
+4. Chat history is displayed for reference.
+""")
+
+# Dataset Upload Section
+st.sidebar.subheader("Upload Dataset")
+file = st.sidebar.file_uploader("Choose a CSV or JSON file:", type=["csv", "json"])
+uploaded_columns = []
+collection_name = ""
+data = None
+
+if file:
+    filename = file.name
+    if allowed_file(filename):
+        data = pd.read_csv(file) if filename.endswith('.csv') else pd.read_json(file)
+        uploaded_columns = store_in_mongodb(data, filename)
+        collection_name = filename[:-5]
+        st.success(f"Dataset uploaded successfully! Columns in your data: {uploaded_columns}")
+    else:
+        st.error("Unsupported file type. Please upload a CSV or JSON file.")
+
+# Chat Interface
+if data is not None:
+    st.write("---")
+    st.subheader("Chat with ChatDB 💬")
+    user_input = st.text_input("Type your query here:")
+
+    if user_input and uploaded_columns:
+        if user_input.lower() == "example mongo query":
+            # Example query generation
+            categorical = data.select_dtypes(exclude="number").columns.tolist()
+            quantitative = data.select_dtypes(include="number").columns.tolist()
+            sample_queries = generate_sample_mongo_queries(collection_name, categorical, quantitative)
+            if sample_queries != 0:
+                st.write("Here are some example MongoDB queries:")
+                for query, nl_query in sample_queries:
+                    st.write(nl_query)
+                    st.json(query)
+                    result = execute_mongo_query(query, collection_name)
+                    if result is not None:
+                        st.dataframe(result)
+            else:
+                st.write("Data does not have the necessary columns to produce output.")
+        else:
+            nat_lang_query, query = generate_mongo_query(user_input, collection_name, uploaded_columns)
+            if query:
+                if "chat_history" not in st.session_state:
+                    st.session_state["chat_history"] = []
+                st.session_state["chat_history"].append({
+                    "user_input": user_input,
+                    "nat_lang_query": nat_lang_query,
+                    "query": query
+                })
+            st.write("---")
+            st.subheader("Generated Query 🔍")
+            if query:
+                st.markdown(f"**Natural Language Interpretation:** {nat_lang_query}")
+                st.json(query)
+                result = execute_mongo_query(query, collection_name)
+                if result is not None:
+                    st.subheader("Query Results 📊")
+                    st.dataframe(result)
+                else:
+                    st.error("No results generated for this query.")
+            else:
+                st.error("No query generated. Please refine your input.")
+
+    # Chat History
+    st.write("---")
+    st.subheader("Chat History 🕒")
+    if "chat_history" in st.session_state:
+        for idx, chat in enumerate(st.session_state["chat_history"]):
+            user_query = chat.get("user_input", "Unknown query")
+            response = chat.get("nat_lang_query", "Unknown response")
+            generated_query = chat.get("query", "No query generated")
+            st.markdown(f"**Query {idx + 1}:**")
+            st.write(f"**You:** {user_query}")
+            st.write(f"**ChatDB:** {response}")
+            st.json(generated_query)
+else:
+    st.write("Please upload a dataset to start interacting with ChatDB.")
 
 # -------------------------------- MONGO HELPER FUNCTIONS --------------------------------
 
