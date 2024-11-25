@@ -373,11 +373,6 @@ if data is not None:
                 "nat_lang_query": nat_lang_query,
                 "query": query
             })
-
-        st.markdown(f"**Query {idx + 1}:**")
-        st.write(f"**You:** {user_query}")
-        st.write(f"**ChatDB:** {response}")
-        st.code(query)
         
         # Explanation Section
         st.write("---")
