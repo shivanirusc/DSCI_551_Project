@@ -261,12 +261,9 @@ download_nltk_resources()
 
 # Function to tokenize input
 def basic_tokenizer(user_input):
-    # Define regex for capturing tokens
-    pattern = r'\b(and|or)\b|[a-zA-Z0-9_]+|[<>!=]+|\d+'
-
-    # Use regex to tokenize
-    tokens = re.findall(pattern, user_input.lower())
-    return [token.strip() for token in tokens if token.strip()]
+    # Remove punctuation and tokenize
+    tokens = re.sub(r'[^\w\s]', '', user_input.lower()).split()
+    return tokens
 
 # Initialize MongoDB
 mongo_client = MongoClient("mongodb://localhost:27017/")
