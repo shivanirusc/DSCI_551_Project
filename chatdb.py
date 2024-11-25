@@ -303,6 +303,19 @@ def process_input(user_input):
     
     return tokens
 
+# Function to map the tokens dynamically to column names in the dataset
+def map_columns(tokens, quantitative_columns):
+    # Fuzzy match or search for terms in the quantitative columns
+    column = None
+    for token in tokens:
+        for col in quantitative_columns:
+            if token in col.lower():  # Match case-insensitive
+                column = col
+                break
+        if column:  # Break out of outer loop if column is found
+            break
+    return column
+
 # Example function for categorizing columns
 def categorize_columns(dataframe):
     categorical = [col for col in dataframe.columns if dataframe[col].dtype == 'object']
