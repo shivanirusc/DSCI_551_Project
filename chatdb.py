@@ -342,15 +342,15 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
             return nat_lang_query, sql_query
     
     # Step 4: Handle 'count' queries
-    if "count" in tokens:
-        for cat in categorical_columns:
-            # Check for exact or partial matches in tokens
-            if any(token in cat.lower() for token in tokens):
-                sql_query = f"SELECT {cat}, COUNT(*) as count_{cat} FROM {table_name} GROUP BY {cat}"
-                nat_lang_query = f"Count of {cat}"
-                st.write(f"Generated query: {sql_query}")
-                return nat_lang_query, sql_query
-
+    if "count" in tokens or "many" in tokens:  # Include synonyms like "many"
+     for cat in categorical_columns:
+         # Check for exact or partial matches
+         if any(token in cat.lower() for token in tokens):
+             sql_query = f"SELECT {cat}, COUNT(*) as count_{cat} FROM {table_name} GROUP BY {cat}"
+             nat_lang_query = f"Count of {cat}"
+             st.write(f"Generated query: {sql_query}")
+             return nat_lang_query, sql_query
+    
     # Step 5: Handle 'average' or 'avg' queries
     if any(word in tokens for word in ["average", "avg"]):
         for quant in quantitative_columns:
