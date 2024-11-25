@@ -475,121 +475,109 @@ def gen_gtlt_query_unique(unique_cols, quant_cols, range_, ineq, collectionName,
     return [query_result, query_string, nat_language, ineq_str + " than"]
 
 # --------------------------------UI------------------------------------------------------
-    # Streamlit App UI
-st.title("ChatDB: MongoDB Query Assistant 🤖")
-st.write("Upload your dataset (CSV or JSON), and ask ChatDB to generate MongoDB queries using natural language.")
 
-# Sidebar Instructions
+from pymongo import MongoClient
+import json
+
+# MongoDB Connection
+mongo_client = MongoClient("mongodb://localhost:27017/")
+mongo_db = mongo_client["chat_db"]
+
+# Function to store data in MongoDB
+def store_in_mongodb(data, json_name):
+    collection_name = json_name[:-5]
+    collection = mongo_db[collection_name]
+    collection.drop()  # Clear old data
+    collection.insert_many(data.to_dict(orient='records'))
+    return collection_name
+
+# Function to execute MongoDB query
+def execute_mongo_query(query, collection_name):
+    collection = mongo_db[collection_name]
+    if isinstance(query, list):
+        result = list(collection.aggregate(query))
+    else:
+        result = list(collection.find(query))
+    return pd.DataFrame(result)
+
+# Check file type
+def allowed_file(filename):
+    return filename.lower().endswith(('.csv', '.json'))
+
+# Streamlit UI
+st.title("MongoDB Query Assistant 🤖")
+st.write("Upload your dataset and interact with MongoDB using natural language queries.")
+
+# Sidebar
 st.sidebar.title("Instructions 📖")
 st.sidebar.markdown("""
-1. Upload your dataset (CSV or JSON).
-2. Enter a natural language query in the input box.
-3. View the generated query, explanation, and results.
-4. Chat history is displayed for reference.
+1. Upload a CSV or JSON dataset.
+2. Enter a natural language query.
+3. View the MongoDB query and results.
 """)
 
-# Dataset Upload Section
+# File Upload
 st.sidebar.subheader("Upload Dataset")
 file = st.sidebar.file_uploader("Choose a CSV or JSON file:", type=["csv", "json"])
-uploaded_columns = []
-collection_name = ""
-data = None
-
-# Dataset Upload Section
-st.sidebar.subheader("Upload Dataset")
-file = st.sidebar.file_uploader("Choose a CSV or JSON file:", type=["csv", "json"])
-uploaded_columns = []
 collection_name = ""
 data = None
 
 if file:
     filename = file.name
-    # Debugging: Check if file is uploaded
-    st.write(f"Uploaded file: {filename}")
     if allowed_file(filename):
         try:
-            # Process file based on extension
-            if filename.endswith('.csv'):
-                data = pd.read_csv(file)
-            elif filename.endswith('.json'):
-                data = pd.read_json(file)
-
-            # Debugging: Check if data is loaded correctly
-            st.write("Data loaded successfully.")
-            
+            # Read the file
+            data = pd.read_csv(file) if filename.endswith('.csv') else pd.read_json(file)
             # Store data in MongoDB
-            uploaded_columns = store_in_mongodb(data, filename)
-            collection_name = filename.rsplit('.', 1)[0]  # Remove file extension
-            st.success(f"Dataset uploaded successfully! Columns in your data: {uploaded_columns}")
+            collection_name = store_in_mongodb(data, filename)
+            st.success(f"Dataset uploaded successfully! Collection: `{collection_name}`")
         except Exception as e:
-            # Handle errors during file processing
-            st.error(f"Error processing the file: {e}")
-            st.stop()
+            st.error(f"Error processing file: {e}")
     else:
-        st.error("Unsupported file type. Please upload a CSV or JSON file.")
-else:
-    st.info("Please upload a file to get started.")
+        st.error("Invalid file type. Please upload a CSV or JSON file.")
 
-# Chat Interface
+# Query Interface
 if data is not None:
-    st.write("---")
-    st.subheader("Chat with ChatDB 💬")
-    user_input = st.text_input("Type your query here:")
+    st.subheader("Interact with MongoDB 💬")
+    user_input = st.text_input("Enter your natural language query:")
 
-    if user_input and uploaded_columns:
-        if user_input.lower() == "example mongo query":
-            # Example query generation
-            categorical = data.select_dtypes(exclude="number").columns.tolist()
-            quantitative = data.select_dtypes(include="number").columns.tolist()
-            sample_queries = generate_sample_mongo_queries(collection_name, categorical, quantitative)
-            if sample_queries != 0:
-                st.write("Here are some example MongoDB queries:")
-                for query, nl_query in sample_queries:
-                    st.write(nl_query)
-                    st.json(query)
-                    result = execute_mongo_query(query, collection_name)
-                    if result is not None:
-                        st.dataframe(result)
-            else:
-                st.write("Data does not have the necessary columns to produce output.")
-        else:
-            nat_lang_query, query = generate_mongo_query(user_input, collection_name, uploaded_columns)
-            if query:
-                if "chat_history" not in st.session_state:
-                    st.session_state["chat_history"] = []
-                st.session_state["chat_history"].append({
-                    "user_input": user_input,
-                    "nat_lang_query": nat_lang_query,
-                    "query": query
-                })
-            st.write("---")
-            st.subheader("Generated Query 🔍")
-            if query:
-                st.markdown(f"**Natural Language Interpretation:** {nat_lang_query}")
-                st.json(query)
-                result = execute_mongo_query(query, collection_name)
-                if result is not None:
-                    st.subheader("Query Results 📊")
-                    st.dataframe(result)
-                else:
-                    st.error("No results generated for this query.")
-            else:
-                st.error("No query generated. Please refine your input.")
+    if user_input:
+        # Simulate processing of the input into MongoDB query
+        st.write("Processing query...")
+        # Example: This should be replaced with actual NLP-to-MongoDB query translation logic
+        query_example = [{"$match": {}}, {"$limit": 5}]
+        st.subheader("Generated MongoDB Query:")
+        st.json(query_example)
 
-    # Chat History
-    st.write("---")
-    st.subheader("Chat History 🕒")
-    if "chat_history" in st.session_state:
-        for idx, chat in enumerate(st.session_state["chat_history"]):
-            user_query = chat.get("user_input", "Unknown query")
-            response = chat.get("nat_lang_query", "Unknown response")
-            generated_query = chat.get("query", "No query generated")
-            st.markdown(f"**Query {idx + 1}:**")
-            st.write(f"**You:** {user_query}")
-            st.write(f"**ChatDB:** {response}")
-            st.json(generated_query)
+        # Execute and display the query results
+        try:
+            results = execute_mongo_query(query_example, collection_name)
+            if not results.empty:
+                st.subheader("Query Results 📊")
+                st.dataframe(results)
+            else:
+                st.warning("No results found for the query.")
+        except Exception as e:
+            st.error(f"Error executing query: {e}")
 else:
-    st.write("Please upload a dataset to start interacting with ChatDB.")
+    st.info("Please upload a dataset to start interacting.")
+
+# Chat History
+if "chat_history" not in st.session_state:
+    st.session_state["chat_history"] = []
+
+if user_input and collection_name:
+    st.session_state["chat_history"].append({
+        "user_input": user_input,
+        "query": query_example
+    })
+
+if st.session_state["chat_history"]:
+    st.subheader("Chat History 🕒")
+    for idx, chat in enumerate(st.session_state["chat_history"]):
+        st.markdown(f"**Query {idx + 1}:**")
+        st.write(f"**You:** {chat['user_input']}")
+        st.json(chat["query"])
 
 # -------------------------------- MONGO HELPER FUNCTIONS --------------------------------
 
