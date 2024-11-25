@@ -399,13 +399,21 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
 
     # Handle "TOP N" queries
     if "top" in tokens and "by" in tokens:
-        for quant in quantitative_columns:
-            for cat in categorical_columns:
-                if quant in tokens and cat in tokens:
-                    n_value = 5  # Default top 5, can be modified to extract from user input
-                    sql_query = f"SELECT {cat}, SUM({quant}) as total_{quant} FROM {table_name} GROUP BY {cat} ORDER BY total_{quant} DESC LIMIT {n_value}"
-                    nat_lang_query = f"Top {n_value} {cat} by {quant}"
-                    return nat_lang_query, sql_query 
+        try:
+            # Extract N dynamically from the input
+            n_index = tokens.index("top") + 1
+            n_value = int(tokens[n_index])  # Assume the next token is the value of N
+            
+            # Identify relevant columns
+            for quant in quantitative_columns:
+                for cat in categorical_columns:
+                    if quant in tokens and cat in tokens:
+                        sql_query = f"SELECT {cat}, SUM({quant}) as total_{quant} FROM {table_name} GROUP BY {cat} ORDER BY total_{quant} DESC LIMIT {n_value}"
+                        nat_lang_query = f"Top {n_value} {cat} by {quant}"
+                        return nat_lang_query, sql_query
+        except (IndexError, ValueError):
+            return "Please specify a valid number after 'top'.", None
+
 
     # 7. Complex queries with multiple conditions (WHERE + AND)
     if "where" in tokens and "and" in tokens:
