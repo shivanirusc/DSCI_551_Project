@@ -318,7 +318,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     categorical_columns, quantitative_columns = categorize_columns(data)
     st.write(f"categorical_columns extracted: {categorical_columns}")
     st.write(f"quantitative_columns extracted: {quantitative_columns}")
-
+    
     # Handle sum query with conditions: "sum of <A> where <B>"
     if "sum" in tokens or "total" in tokens:
         for quant in quantitative_columns:
@@ -329,7 +329,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
                     condition_tokens = tokens[where_index + 1:]
 
                     # Check for common comparison operators (greater, less, etc.)
-                    operators = ["greater", "less", "equal", "not", "like"]
+                    operators = ["greater", "less", "equal", "not"]
                     condition = ""
                     value = None
 
