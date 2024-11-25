@@ -316,15 +316,38 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
 
     # Step 2: Categorize columns in the DataFrame (categorical vs. quantitative)
     categorical_columns, quantitative_columns = categorize_columns(data)
+    st.write(f"categorical_columns extracted: {categorical_columns}")
+    st.write(f"quantitative_columns extracted: {quantitative_columns}")
 
-    # 1. Sum query with condition: "sum of <A> where <B>"
+    # Handle sum query with conditions: "sum of <A> where <B>"
     if "sum" in tokens or "total" in tokens:
         for quant in quantitative_columns:
             if quant in tokens:
-                # Find condition after 'where' if present
+                # Check for conditions (e.g., where quantity > 100)
                 if "where" in tokens:
-                    condition_index = tokens.index("where") + 1
-                    condition = ' '.join(tokens[condition_index:])
+                    where_index = tokens.index("where")
+                    condition_tokens = tokens[where_index + 1:]
+
+                    # Check for common comparison operators (greater, less, etc.)
+                    operators = ["greater", "less", "equal", "not", "like"]
+                    condition = ""
+                    value = None
+
+                    for i, token in enumerate(condition_tokens):
+                        if token in operators:
+                            operator = token
+                            value = condition_tokens[i + 1]
+                            if operator == "greater":
+                                condition = f"{quant} > {value}"
+                            elif operator == "less":
+                                condition = f"{quant} < {value}"
+                            elif operator == "equal":
+                                condition = f"{quant} = {value}"
+                            elif operator == "not":
+                                if condition_tokens[i + 1] == "equal":
+                                    condition = f"{quant} != {value}"
+                            break
+                    
                     sql_query = f"SELECT SUM({quant}) as total_{quant} FROM {table_name} WHERE {condition}"
                     nat_lang_query = f"Sum of {quant} where {condition}"
                     return nat_lang_query, sql_query
