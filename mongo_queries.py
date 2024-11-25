@@ -177,6 +177,11 @@ def get_mongo_queries_nat(tokens, cat_cols, quant_cols, unique_cols, range_, col
         print(quant_chosen)
         if(cat_chosen and quant_chosen):
             result = gen_total_query(cat_cols, quant_cols, collectionName, specific_cat=cat_chosen[0], specific_quant=quant_chosen[0])
+    elif set(tokens) & set(greater_tokens):
+        if(cat_chosen and quant_chosen and extracted_numbers):
+            result = gen_gtlt_query_group(cat_cols, quant_cols, range_, "gt", collectionName, specific_cat=cat_chosen[0], specific_quant=quant_chosen[0], ineq_input=extracted_numbers[0])
+        elif(quant_chosen and extracted_numbers and unique_chosen and not cat_chosen):
+            result = gen_gtlt_query_unique(unique_cols, quant_cols, range_, "gt", collectionName, specific_unique=unique_chosen[0], specific_quant=quant_chosen[0], ineq_input=extracted_numbers[0])
     elif set(tokens) & set(count_tokens):
         if(cat_chosen):
             result = gen_counts_query(cat_cols, collectionName, specific_cat=cat_chosen[0])
@@ -185,11 +190,6 @@ def get_mongo_queries_nat(tokens, cat_cols, quant_cols, unique_cols, range_, col
         if(cat_chosen and quant_chosen):
             result = gen_average_query(cat_cols, quant_cols, collectionName, specific_cat=cat_chosen[0], specific_quant=quant_chosen[0])
     # greater than aggregate case
-    elif set(tokens) & set(greater_tokens):
-        if(cat_chosen and quant_chosen and extracted_numbers):
-            result = gen_gtlt_query_group(cat_cols, quant_cols, range_, "gt", collectionName, specific_cat=cat_chosen[0], specific_quant=quant_chosen[0], ineq_input=extracted_numbers[0])
-        elif(quant_chosen and extracted_numbers and unique_chosen and not cat_chosen):
-            result = gen_gtlt_query_unique(unique_cols, quant_cols, range_, "gt", collectionName, specific_unique=unique_chosen[0], specific_quant=quant_chosen[0], ineq_input=extracted_numbers[0])
     elif set(tokens) & set(less_tokens):
         if(cat_chosen and quant_chosen and extracted_numbers):
             result = gen_gtlt_query_group(cat_cols, quant_cols, range_, "lt", collectionName, specific_cat=cat_chosen[0], specific_quant=quant_chosen[0], ineq_input=extracted_numbers[0])

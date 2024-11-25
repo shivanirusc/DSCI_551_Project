@@ -9,6 +9,8 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 import os
 import re
+from streamlit_extras.stylable_container import stylable_container
+
 
 from sql_queries import categorize_columns, generate_sample_queries, generate_construct_queries, execute_query
 from mongo_queries import get_quant_range, infer_types, get_sample_mongo_specific, get_sample_mongo_gen, get_mongo_queries_nat, process_input_mongo
@@ -364,8 +366,181 @@ if data is not None:
     st.subheader("Chat with ChatDB 💬")
     user_input = st.text_input("Type your query here:")
     tokens = process_input_mongo(user_input)
+    query = ""
+    nat_lang_query = ""
+    query = ""
+    if user_input and uploaded_columns and ("example" in user_input or "sample" in user_input):
+        if filetype == "csv":
+            print(None)
+        elif filetype == "json":
+            if user_input.lower() == "example mongodb queries" or user_input.lower() =="sample mongodb queries":
+                res_many = get_sample_mongo_gen(categorical, numeric, unique, range_vals, collection_name)
+                if res_many:
+                    print(res_many)
+                    for key, value in res_many.items(): 
+                        nat_lang_query = value[2]
+                        query = value[1]
+                        if query:
+                        # Initialize chat history if not already present
+                            if "chat_history" not in st.session_state:
+                                st.session_state["chat_history"] = []
 
-    if user_input and uploaded_columns:
+                            # Add current query and response to chat history
+                            st.session_state["chat_history"].append({
+                                "user_input": user_input,
+                                "nat_lang_query": nat_lang_query,
+                                "query": query
+                            })
+                        st.write("---")
+                        st.subheader("Generated Query 🔍")
+                        if query:
+                            st.markdown(f"**Natural Language Interpretation:** `{nat_lang_query}`")
+                            with stylable_container(
+                                "codeblock",
+                                """
+                                code {
+                                    white-space: pre-wrap !important;
+                                }
+                                """,
+                            ):
+                                st.code(
+                                    query
+                                )
+                        else:
+                            st.error("No query generated. Please refine your input.")
+                
+                        # Explanation Section
+                        st.write("---")
+                        st.subheader("Query Explanation 📝")
+                        if query:
+                            if filetype == "json" and isinstance(query, str):
+                                explanation = "This MongoDb query performs the following operations:\n\n"
+                                if "aggregate" in query:
+                                    explanation += "- Groups the data by one or more categorical columns.\n"
+                                if "Count" in query:
+                                    explanation += "- Calculates the total counts a specified categorical column.\n"
+                                if "sum" in query:
+                                    explanation += "- Calculates the total for a specified numerical column.\n"
+                                if "avg" in query:
+                                    explanation += "- Computes the average value of a numerical column.\n"
+                                if "gt" in query:
+                                    explanation += "- Only returns documents with the specified attribute greater than the specified value.\n"
+                                if "lt" in query:
+                                    explanation += "- Only returns documents with the specified attribute less than the specified value.\n"
+                                explanation += f"\nThe query operates on the `{collection_name}` collection in MongoDB."
+                            else:
+                                explanation = "Unable to explain the query."
+                            st.write(explanation)
+                        else:
+                            st.error(nat_lang_query)
+                        st.write("---")
+                        st.subheader("Query Results 📊")
+                        if query:
+                            try:
+                                if filetype == "json":
+                                    st.write("Showing the first 5 results:")
+                                    collection = mongo_db[collection_name]
+                                    result = list(value[0])
+                                    print(collection_name)
+                                    result_df = pd.DataFrame(result)
+                                    st.dataframe(result_df)
+                            except Exception as e:
+                                st.error(f"Error executing query: {e}")
+                        else:
+                            st.error("No results generated for this query.")
+            else:
+                res = get_sample_mongo_specific(tokens, categorical, numeric, unique, range_vals, collection_name)
+                if res:
+                    query = res[1]
+                    nat_lang_query = res[2]
+            # Add to chat history only if a valid query is generated
+                if query:
+                    # Initialize chat history if not already present
+                    if "chat_history" not in st.session_state:
+                        st.session_state["chat_history"] = []
+
+                    # Add current query and response to chat history
+                    st.session_state["chat_history"].append({
+                        "user_input": user_input,
+                        "nat_lang_query": nat_lang_query,
+                        "query": query
+                    })
+                
+                st.write("---")
+                st.subheader("Generated Query 🔍")
+                if query:
+                    st.markdown(f"**Natural Language Interpretation:** `{nat_lang_query}`")
+                    with stylable_container(
+                        "codeblock",
+                        """
+                        code {
+                            white-space: pre-wrap !important;
+                        }
+                        """,
+                    ):
+                        st.code(
+                            query
+                        )
+                else:
+                    st.error("No query generated. Please refine your input.")
+                
+                # Explanation Section
+                st.write("---")
+                st.subheader("Query Explanation 📝")
+                if query:
+                    if filetype == "csv" and isinstance(query, str):
+                        explanation = "This SQL query performs the following operations:\n\n"
+                        if "GROUP BY" in query:
+                            explanation += "- Groups the data by one or more categorical columns.\n"
+                        if "SUM" in query:
+                            explanation += "- Calculates the total for a specified numerical column.\n"
+                        if "MAX" in query:
+                            explanation += "- Finds the maximum value in a numerical column.\n"
+                        if "AVG" in query:
+                            explanation += "- Computes the average value of a numerical column.\n"
+                        if "WHERE" in query:
+                            explanation += "- Filters the data based on specific conditions (e.g., 'less than' or 'greater than').\n"
+                        explanation += f"\nThe query retrieves data from the `{table_name}` table."
+                    elif filetype == "json" and isinstance(query, str):
+                        explanation = "This MongoDb query performs the following operations:\n\n"
+                        if "aggregate" in query:
+                            explanation += "- Groups the data by one or more categorical columns.\n"
+                        if "sum" in query:
+                            explanation += "- Calculates the total for a specified numerical column.\n"
+                        if "avg" in query:
+                            explanation += "- Computes the average value of a numerical column.\n"
+                        if "gt" in query:
+                            explanation += "- Only returns documents with the specified attribute greater than the specified value.\n"
+                        if "lt" in query:
+                            explanation += "- Only returns documents with the specified attribute less than the specified value.\n"
+                        explanation += f"\nThe query operates on the `{collection_name}` collection in MongoDB."
+                    else:
+                        explanation = "Unable to explain the query."
+                    st.write(explanation)
+                else:
+                    st.error(nat_lang_query)
+
+                # Results Section
+                st.write("---")
+                st.subheader("Query Results 📊")
+                if query:
+                    try:
+                        if filetype == "csv":
+                            conn = sqlite3.connect("chatdb_sql.db")
+                            result = pd.read_sql_query(query, conn)
+                            st.dataframe(result)
+                        elif filetype == "json":
+                            st.write("Showing the first 5 results:")
+                            collection = mongo_db[collection_name]
+                            result = list(res[0])
+                            print(table_name)
+                            result_df = pd.DataFrame(result)
+                            st.dataframe(result_df)
+                    except Exception as e:
+                        st.error(f"Error executing query: {e}")
+                else:
+                    st.error("No results generated for this query.")
+    elif user_input and uploaded_columns:
         if filetype == "csv":
 
             # Generates example sql queries if user enters "example sql query" into query box
@@ -408,7 +583,17 @@ if data is not None:
         st.subheader("Generated Query 🔍")
         if query:
             st.markdown(f"**Natural Language Interpretation:** `{nat_lang_query}`")
-            st.code(query)
+            with stylable_container(
+                        "codeblock",
+                        """
+                        code {
+                            white-space: pre-wrap !important;
+                        }
+                        """,
+                    ):
+                        st.code(
+                            query
+                        )
         else:
             st.error("No query generated. Please refine your input.")
         
@@ -458,6 +643,7 @@ if data is not None:
                     result = pd.read_sql_query(query, conn)
                     st.dataframe(result)
                 elif filetype == "json":
+                    st.write("Showing the first 5 results:")
                     collection = mongo_db[collection_name]
                     result = list(res[0])
                     print(table_name)
