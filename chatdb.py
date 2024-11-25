@@ -108,7 +108,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     combined_tokens = [token.replace(' ', '_').lower() for token in combined_tokens]  # Format like column names
     st.write(f"Combined Tokens: {combined_tokens}")
 
-     if any(word in tokens for word in ["highest", "top"]):
+    if any(word in tokens for word in ["highest", "top"]):
         quant_col = None
         cat_col = None
 
