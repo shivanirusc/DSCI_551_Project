@@ -201,7 +201,6 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
 
     # Handle 'greater', 'less', 'equal', 'not equal', 'between'
     tokens1 = tokenize_with_operators(user_input)
-    st.write(f"Tokens1 extracted: {tokens1}")
     # Initialize components for SQL conditions
     conditions = []
     operators = {
@@ -316,9 +315,22 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
 
 # Streamlit app setup
 st.title("ChatDB: Interactive Query Assistant 🤖")
-st.write("Upload your dataset and interact with it using natural language queries!")
+st.write(
+    "Upload your dataset (CSV or JSON), and ask ChatDB to generate SQL queries for your data using natural language."
+)
 
-file = st.sidebar.file_uploader("Upload a CSV or JSON file:", type=["csv", "json"])
+# Sidebar for user instructions
+st.sidebar.title("Instructions 📖")
+st.sidebar.markdown("""
+1. Upload your dataset (CSV or JSON).
+2. Enter a natural language query in the input box.
+3. View the SQL query, explanation, and results.
+4. Chat history is displayed for reference.
+""")
+
+# File upload section
+st.sidebar.subheader("Upload Dataset")
+file = st.sidebar.file_uploader("Choose a CSV or JSON file:", type=["csv", "json"])
 uploaded_columns = []
 table_name = ""
 data = None
@@ -335,43 +347,77 @@ if file:
             uploaded_columns = store_in_mongodb(data, filename)
             table_name = filename[:-5]
 
-        st.success(f"Dataset uploaded successfully! Columns: {uploaded_columns}")
+        st.success(f"Dataset uploaded successfully! Columns in your data: {uploaded_columns}")
     else:
-        st.error("Unsupported file type. Upload a CSV or JSON file.")
+        st.error("Unsupported file type. Please upload a CSV or JSON file.")
 
+# Display chat interface only if a dataset is uploaded
 if data is not None:
+    # Chat Interface
+    st.write("---")
     st.subheader("Chat with ChatDB 💬")
     user_input = st.text_input("Type your query here:")
 
-    if user_input:
+    if user_input and uploaded_columns:
+        # Query Processing
         nat_lang_query, sql_query = generate_sql_query(user_input, uploaded_columns, table_name, data)
 
+        # Store query and response in session state
         if "chat_history" not in st.session_state:
             st.session_state["chat_history"] = []
 
+        # Store current input/output
         st.session_state["chat_history"].append({
             "user_input": user_input,
             "nat_lang_query": nat_lang_query,
             "sql_query": sql_query
         })
 
-        st.write("**Chat History**")
-        for chat in st.session_state["chat_history"]:
+        # Display chat history
+        st.write("---")
+        st.subheader("Chat History 🕒")
+        for idx, chat in enumerate(st.session_state["chat_history"], start=1):
+            st.markdown(f"**Query {idx}:**")
             st.write(f"**You:** {chat['user_input']}")
             st.write(f"**ChatDB:** {chat['nat_lang_query']}")
             st.code(chat['sql_query'])
 
-        st.write("**Query Explanation 📝**")
+        # Explanation Section
+        st.write("---")
+        st.subheader("Query Explanation 📝")
         if sql_query:
-            st.write(f"This query processes `{table_name}` with grouping or filtering based on input conditions.")
+            explanation = f"This SQL query selects data from the `{table_name}` table, "
+            if "GROUP BY" in sql_query:
+                explanation += "groups the data by the specified category, "
+            if "MAX" in sql_query or "SUM" in sql_query or "AVG" in sql_query:
+                explanation += f"and computes aggregate metrics like {', '.join([agg for agg in ['MAX', 'SUM', 'AVG'] if agg in sql_query])}. "
+            if "WHERE" in sql_query:
+                explanation += "filters the data based on the conditions specified in the query."
+            st.write(explanation)
         else:
             st.error(nat_lang_query)
 
+        # Results Section
+        st.write("---")
+        st.subheader("Query Results 📊")
         if sql_query:
-            conn = sqlite3.connect("chatdb_sql.db")
-            try:
-                result = pd.read_sql_query(sql_query, conn)
-                st.write("**Query Results 📊**")
-                st.dataframe(result)
-            except Exception as e:
-                st.error(f"Error executing SQL query: {e}")
+            if filename.endswith('.csv'):
+                conn = sqlite3.connect("chatdb_sql.db")
+                try:
+                    result = pd.read_sql_query(sql_query, conn)
+                    st.dataframe(result)  # Display the result as a table
+                except Exception as e:
+                    st.error(f"Error executing SQL query: {e}")
+            elif filename.endswith('.json'):
+                collection = mongo_db[table_name]
+                try:
+                    pipeline = [
+                        {"$group": {"_id": f"${processed_tokens[1]}", f"total_{processed_tokens[3]}": {"$sum": f"${processed_tokens[3]}"}}}
+                    ]
+                    result = list(collection.aggregate(pipeline))
+                    result_df = pd.DataFrame(result)
+                    st.dataframe(result_df)  # Display the result as a table
+                except Exception as e:
+                    st.error(f"Error executing MongoDB query: {e}")
+        else:
+            st.error("Unable to generate query results.")
