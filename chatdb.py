@@ -315,14 +315,14 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
 
 # Streamlit app setup
 st.title("ChatDB: Interactive Query Assistant 🤖")
-st.write("Upload your dataset (CSV or JSON), and ask ChatDB to generate SQL queries for your data using natural language.")
+st.write("Upload your dataset (CSV or JSON), and ask ChatDB to generate queries for your data using natural language.")
 
-# Sidebar for user instructions
+# Sidebar for instructions
 st.sidebar.title("Instructions 📖")
 st.sidebar.markdown("""
 1. Upload your dataset (CSV or JSON).
 2. Enter a natural language query in the input box.
-3. View the SQL query, explanation, and results.
+3. View the generated query, explanation, and results.
 4. Chat history is displayed for reference.
 """)
 
@@ -335,16 +335,19 @@ data = None
 
 if file:
     filename = file.name
+    filetype = "csv" if filename.endswith(".csv") else "json"
     if allowed_file(filename):
-        if filename.endswith('.csv'):
+        if filetype == "csv":
             data = pd.read_csv(file)
             uploaded_columns = make_sql_db(data, filename)
             table_name = filename[:-4]
-        else:
-            st.error("Only CSV files are supported in this version.")
+        elif filetype == "json":
+            data = pd.read_json(file)
+            uploaded_columns = store_in_mongodb(data, filename)
+            table_name = filename[:-5]
         st.success(f"Dataset uploaded successfully! Columns in your data: {uploaded_columns}")
     else:
-        st.error("Unsupported file type. Please upload a CSV file.")
+        st.error("Unsupported file type. Please upload a CSV or JSON file.")
 
 # Chat interface only if dataset is loaded
 if data is not None:
@@ -353,7 +356,7 @@ if data is not None:
     user_input = st.text_input("Type your query here:")
 
     if user_input and uploaded_columns:
-        nat_lang_query, sql_query = generate_sql_query(user_input, uploaded_columns, table_name, data)
+        nat_lang_query, query = generate_query(user_input, uploaded_columns, table_name, data, filetype)
 
         # Initialize chat history if not already present
         if "chat_history" not in st.session_state:
@@ -361,45 +364,49 @@ if data is not None:
 
         # Add current query and response to chat history
         st.session_state["chat_history"].append({
-            "user_input": user_input or "",
-            "nat_lang_query": nat_lang_query or "No response generated",
-            "sql_query": sql_query or "No SQL query generated"
+            "user_input": user_input,
+            "nat_lang_query": nat_lang_query,
+            "query": query
         })
 
         # Display chat history
         st.write("---")
         st.subheader("Chat History 🕒")
         for idx, chat in enumerate(st.session_state["chat_history"]):
-            # Safely access dictionary keys
             user_query = chat.get("user_input", "Unknown query")
             response = chat.get("nat_lang_query", "Unknown response")
-            query = chat.get("sql_query", "No SQL query generated")
-
+            generated_query = chat.get("query", "No query generated")
             st.markdown(f"**Query {idx + 1}:**")
             st.write(f"**You:** {user_query}")
             st.write(f"**ChatDB:** {response}")
-            st.code(query)
+            st.code(generated_query)
 
-        # Display query explanation
+        # Explanation Section
         st.write("---")
         st.subheader("Query Explanation 📝")
-        if sql_query:
-            explanation = "This SQL query fetches data based on the criteria provided in your query."
-            if "GROUP BY" in sql_query:
-                explanation += " The query groups data by specified columns."
-            if "LIMIT" in sql_query:
-                explanation += " It limits the results to a specified number of rows."
-            st.write(explanation)
+        if filetype == "csv" and isinstance(query, str):
+            explanation = "This SQL query fetches data from the uploaded table based on the conditions."
+        elif filetype == "json" and isinstance(query, list):
+            explanation = "This NoSQL aggregation pipeline retrieves documents matching the specified criteria."
+        else:
+            explanation = "Unable to explain the query."
+        st.write(explanation)
 
-        # Execute query and display results
+        # Results Section
         st.write("---")
         st.subheader("Query Results 📊")
         try:
-            conn = sqlite3.connect("chatdb_sql.db")
-            result = pd.read_sql_query(sql_query, conn)
-            st.dataframe(result)
+            if filetype == "csv":
+                conn = sqlite3.connect("chatdb_sql.db")
+                result = pd.read_sql_query(query, conn)
+                st.dataframe(result)
+            elif filetype == "json":
+                collection = mongo_db[table_name]
+                result = list(collection.aggregate(query))
+                result_df = pd.DataFrame(result)
+                st.dataframe(result_df)
         except Exception as e:
-            st.error(f"Error executing SQL query: {e}")
+            st.error(f"Error executing query: {e}")
 
 else:
     st.write("Please upload a dataset to start interacting with ChatDB.")
