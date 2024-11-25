@@ -516,7 +516,7 @@ st.sidebar.markdown("""
 3. View the MongoDB query and results.
 """)
 
-# File Upload
+# Dataset Upload Section
 st.sidebar.subheader("Upload Dataset")
 file = st.sidebar.file_uploader("Choose a CSV or JSON file:", type=["csv", "json"])
 collection_name = ""
@@ -524,17 +524,29 @@ data = None
 
 if file:
     filename = file.name
-    if allowed_file(filename):
-        try:
+    st.write(f"Processing file: {filename}")
+    try:
+        if allowed_file(filename):
             # Read the file
-            data = pd.read_csv(file) if filename.endswith('.csv') else pd.read_json(file)
+            if filename.endswith('.csv'):
+                data = pd.read_csv(file)
+            elif filename.endswith('.json'):
+                data = pd.read_json(file)
+            
+            # Debugging: Check data and filename
+            st.write("File uploaded successfully!")
+            st.write(f"First few rows of data:\n{data.head()}")
+            st.write(f"Filename: {filename}")
+            
             # Store data in MongoDB
             collection_name = store_in_mongodb(data, filename)
-            st.success(f"Dataset uploaded successfully! Collection: `{collection_name}`")
-        except Exception as e:
-            st.error(f"Error processing file: {e}")
-    else:
-        st.error("Invalid file type. Please upload a CSV or JSON file.")
+            st.success(f"Dataset uploaded successfully! MongoDB Collection: `{collection_name}`")
+        else:
+            st.error("Invalid file type. Please upload a CSV or JSON file.")
+    except Exception as e:
+        st.error(f"Error processing file: {e}")
+else:
+    st.info("Please upload a dataset to start interacting.")
 
 # Query Interface
 if data is not None:
