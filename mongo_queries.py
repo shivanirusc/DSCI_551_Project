@@ -284,6 +284,7 @@ def get_sample_mongo_specific(tokens, cat_cols, quant_cols, unique_cols, range_,
         order_chosen = random.choice(order)
         all_queries['Total'] = gen_total_query(cat_cols, quant_cols, collectionName, specific_cat = cat_col, specific_quant = quant_col, sort_field=sort_total, order = order_chosen)
         all_queries['Average'] = gen_average_query(cat_cols, quant_cols, collectionName, specific_quant = quant_col, sort_field=sort_average, order = order_chosen)
+        return data
     else:
         print("We couldn't quite find the query type you were looking for. Here are some suggestions: \n- aggregate\n- find")
 
