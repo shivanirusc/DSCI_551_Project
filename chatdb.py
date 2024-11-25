@@ -108,8 +108,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     combined_tokens = [token.replace(' ', '_').lower() for token in combined_tokens]  # Format like column names
     st.write(f"Combined Tokens: {combined_tokens}")
 
-    # Step 4: Handle Top Aggregation Queries dynamically
-    if any(word in tokens for word in ["highest", "top"]):
+     if any(word in tokens for word in ["highest", "top"]):
         quant_col = None
         cat_col = None
 
@@ -125,13 +124,17 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
                 cat_col = cat
                 break
 
+        # Debugging: Ensure columns are matched correctly
+        st.write(f"Matched Quantitative Column: {quant_col}")
+        st.write(f"Matched Categorical Column: {cat_col}")
+
         # Generate SQL query if both column mappings are found
         if quant_col and cat_col:
             sql_query = f"SELECT {cat_col}, MAX({quant_col}) as max_{quant_col} FROM {table_name} GROUP BY {cat_col}"
-            nat_lang_query = f"Highest {quant_col} by {cat_col}"
+            nat_lang_query = f"Top {quant_col} by {cat_col}"
             st.write(f"Generated SQL Query: {sql_query}")
             return nat_lang_query, sql_query
-
+    
     # Handle sum and total queries
     if "sum" in tokens or "total" in tokens:
         column = map_columns(combined_tokens, quantitative_columns)  # Identify the quantitative column
