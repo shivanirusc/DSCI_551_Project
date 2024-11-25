@@ -372,12 +372,18 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
 
     # Step 6: Handle 'maximum' or 'max' queries
     if any(word in tokens for word in ["maximum", "max"]):
+        # Match quantitative column
+        matched_column = None
         for quant in quantitative_columns:
-            if quant in tokens:
-                sql_query = f"SELECT {quant}, MAX({quant}) as max_{quant} FROM {table_name}"
-                nat_lang_query = f"Maximum {quant}"
-                print(f"Generated query: {sql_query}")
-                return nat_lang_query, sql_query
+            if any(token in quant.lower() for token in tokens):
+                matched_column = quant
+                break  # Exit loop once a match is found
+
+        # Generate SQL query if a quantitative column is matched
+        if matched_column:
+            sql_query = f"SELECT '{matched_column}', MAX({matched_column}) as max_{matched_column} FROM {table_name}"
+            nat_lang_query = f"Maximum {matched_column}"
+            return nat_lang_query, sql_query
 
     # Step 7: Handle conditional queries (e.g., where quantity > 100)
     if "where" in tokens:
