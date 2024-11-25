@@ -3,3 +3,4 @@ pandas
 nltk
 pymongo
 tabulate
+stylable_container
