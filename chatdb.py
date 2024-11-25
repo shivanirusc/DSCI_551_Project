@@ -310,13 +310,11 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     # Handle Top-N Queries
     if "top" in tokens:
         for quant in quantitative_columns:
-            # Match singular/plural forms of the quantitative column
             if any(token in quant.lower() for token in tokens):
                 # Extract N from tokens (default to 5 if not specified)
                 top_n = next((int(token) for token in tokens if token.isdigit()), 5)
                 sql_query = f"SELECT * FROM {table_name} ORDER BY {quant} DESC LIMIT {top_n}"
                 nat_lang_query = f"Top {top_n} products by {quant}"
-                print(f"Generated SQL Query: {sql_query}")
                 return nat_lang_query, sql_query
 
     # Handle data filtering
