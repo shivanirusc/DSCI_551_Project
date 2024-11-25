@@ -104,21 +104,28 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     st.write(f"quantitative_columns extracted: {quantitative_columns}")
 
     # Handle Top-N Queries
-    if "top" in tokens or "highest" in tokens:
+    if any(word in tokens for word in ["highest", "top"]):
         quant_col = None
         cat_col = None
 
-        # Match tokens to quantitative columns
+        # Match tokens to quantitative columns (e.g., "profit_margin")
         for quant in quantitative_columns:
             if any(token in quant.lower() for token in tokens):
-                quant_col = quant 
+                quant_col = quant
                 break
 
-        # Match tokens to categorical columns
+        # Match tokens to categorical columns (e.g., "region")
         for cat in categorical_columns:
             if any(token in cat.lower() for token in tokens):
                 cat_col = cat
                 break
+
+        # Generate SQL query if both column mappings are found
+        if quant_col and cat_col:
+            sql_query = f"SELECT {cat_col}, MAX({quant_col}) as max_{quant_col} FROM {table_name} GROUP BY {cat_col}"
+            nat_lang_query = f"Highest {quant_col} by {cat_col}"
+            print(f"Generated SQL Query: {sql_query}")
+            return nat_lang_query, sql_query
 
         # Generate SQL query if both column mappings are found
         if quant_col and cat_col:
