@@ -478,17 +478,16 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
         
         # Handle conjunctions
         elif token in conjunctions:
-            if conditions:  # Add the conjunction only if there are prior conditions
+            if conditions and token.lower() in conjunctions:
                 conditions.append(token.upper())
         
         i += 1
 
-    # Join conditions with proper logic
-    where_clause = " ".join(conditions)
-
-    # Ensure valid query syntax by adding conjunctions
-    if len(conditions) > 1 and not any(conj in where_clause for conj in conjunctions):
-        where_clause = " AND ".join(conditions)
+    # Ensure valid query syntax by adding conjunctions if missing
+    if len(conditions) > 1:
+        where_clause = " AND ".join(conditions)  # Default to AND if no explicit conjunction
+    else:
+        where_clause = " ".join(conditions)
 
     # Generate SQL query
     if where_clause:
