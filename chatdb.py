@@ -9,7 +9,7 @@ from nltk.stem import WordNetLemmatizer
 import os
 import re
 
-from sql_sample_queries import generate_sample_queries
+from sql_queries import categorize_columns, generate_sample_queries, generate_construct_queries, execute_query
 
 # Download NLTK resources
 def download_nltk_resources():
@@ -105,6 +105,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
 
     # Step 2: Dynamically categorize columns in the DataFrame
     categorical_columns, quantitative_columns = categorize_columns(data)
+
 
     # Step 3: Combine tokens to handle multi-word column names
     combined_tokens = [' '.join(tokens[i:j+1]) for i in range(len(tokens)) for j in range(i, len(tokens))]
@@ -347,6 +348,8 @@ if file:
             table_name = filename[:-5]
         st.success(f"Dataset uploaded successfully! Columns in your data: {uploaded_columns}")
     else:
+
+
         st.error("Unsupported file type. Please upload a CSV or JSON file.")
 
 # Chat interface only if dataset is loaded
