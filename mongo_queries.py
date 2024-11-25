@@ -172,6 +172,8 @@ def get_mongo_queries_nat(user_input, tokens, cat_cols, quant_cols, unique_cols,
             sort_field_ = tokens_sort[sort_index + 2]
             if sort_field_ == "total" and  sort_index + 3 < len(tokens_sort):
                 sort_field_ = sort_field_.capitalize() + " " + tokens_sort[sort_index + 3]
+            if sort_field_ == "average" and  sort_index + 3 < len(tokens_sort):
+                sort_field_ = sort_field_.capitalize() + " " + tokens_sort[sort_index + 3]
     sort_order_ = "asc"
     if "descending" in user_input:
         sort_order_ = "desc"
@@ -206,7 +208,14 @@ def get_mongo_queries_nat(user_input, tokens, cat_cols, quant_cols, unique_cols,
     # average case
     elif set(tokens) & set(average_tokens):
         if(cat_chosen and quant_chosen):
-            result = gen_average_query(cat_cols, quant_cols, collectionName, specific_cat=cat_chosen[0], specific_quant=quant_chosen[0])
+            if "sort" in tokens or "order" in tokens:
+                if sort_field_:
+                    result = gen_average_query(cat_cols, quant_cols, collectionName, specific_cat=cat_chosen[0], specific_quant=quant_chosen[0],  sort_field=sort_field_, order=sort_order_)
+                else:
+                    result = gen_average_query(cat_cols, quant_cols, collectionName, specific_cat=cat_chosen[0], specific_quant=quant_chosen[0],  sort_field=quant_chosen[0], order=sort_order_)
+            else:
+                result = gen_average_query(cat_cols, quant_cols, collectionName, specific_cat=cat_chosen[0], specific_quant=quant_chosen[0])
+   
     # greater than aggregate case
     elif set(tokens) & set(less_tokens):
         if(cat_chosen and quant_chosen and extracted_numbers):
@@ -243,6 +252,7 @@ def get_sample_mongo_gen(cat_cols, quant_cols, unique_cols, range_, collectionNa
 def get_sample_mongo_specific(tokens, cat_cols, quant_cols, unique_cols, range_, collectionName):
     aggregate_tokens = ['aggregate', 'group']
     find_tokens = ['find', 'where', 'retrieve']
+    sort_tokens = ['sort', 'order']
     # if its aggregate:
     if set(tokens) & set(aggregate_tokens):
         all_queries = {}
@@ -264,6 +274,16 @@ def get_sample_mongo_specific(tokens, cat_cols, quant_cols, unique_cols, range_,
         selected_value = selected_pairs[0][1]
         data = selected_value
         return data
+    elif set(tokens) & set(sort_tokens):
+        all_queries = {}
+        cat_col = random.choice(cat_cols)
+        quant_col = random.choice(quant_cols)
+        sort_total = "Total " + quant_col
+        sort_average = "Average " + quant_col
+        order = ["asc", "desc"]
+        order_chosen = random.choice(order)
+        all_queries['Total'] = gen_total_query(cat_cols, quant_cols, collectionName, specific_cat = cat_col, specific_quant = quant_col, sort_field=sort_total, order = order_chosen)
+        all_queries['Average'] = gen_average_query(cat_cols, quant_cols, collectionName, specific_quant = quant_col, sort_field=sort_average, order = order_chosen)
     else:
         print("We couldn't quite find the query type you were looking for. Here are some suggestions: \n- aggregate\n- find")
 
@@ -295,13 +315,13 @@ def gen_total_query(cat_cols, quant_cols, collectionName, specific_cat=None, spe
                                          {"$project": {f"{random_cat}": "$_id", f"Total {random_quant}": 1, "_id": 0}}]
     if sort_field:
         pipeline.append({"$sort": {sort_field: order_val}})
+        nat_language = nat_language + " sorted by " + sort_field + " in " + order + " order"
     pipeline.append({"$limit": limit})
     query_result = collection.aggregate(pipeline)
-    query = pipeline
     query_string = f"collection.aggregate({json.dumps(pipeline)})"
     return [query_result, query_string, nat_language, "Total"]
     
-def gen_average_query(cat_cols, quant_cols, collectionName, specific_cat=None, specific_quant=None):
+def gen_average_query(cat_cols, quant_cols, collectionName, specific_cat=None, specific_quant=None,  sort_field=None, order='asc', limit=5):
     """Generates a query in the Average <A> for each <B> Category, where A is a random quantitative variable and B is a 
         random categorical variable, prints this query in natural language and mongo format, and prints the head(5) of the output
 
@@ -314,6 +334,7 @@ def gen_average_query(cat_cols, quant_cols, collectionName, specific_cat=None, s
     collectionName : str
         Name of the collection we are currently querying on
     """
+    order_val = 1 if order == 'asc' else -1
     random_quant = specific_quant if specific_quant else random.choice(quant_cols)
     random_cat = specific_cat if specific_cat else random.choice(cat_cols)
     random_quant_var = f"Average {random_quant}"
@@ -321,11 +342,14 @@ def gen_average_query(cat_cols, quant_cols, collectionName, specific_cat=None, s
                                     string.punctuation))
     nat_language = f"Average {random_quant} for each {random_cat} category"
     collection = mongo_db[collectionName]
-    query_result = collection.aggregate([{"$group": {"_id": f"${random_cat}", f"Average {random_quant}": {"$avg": f"${random_quant}"}}}, 
-                                         {"$project": {f"{random_cat}": "$_id", f"Average {random_quant}": 1, "_id": 0}},{"$limit": 5}])
-    query = [{"$group": {"_id": f"${random_cat}", random_quant_var: {"$avg": f"${random_quant}"}}}, 
-                                         {"$project": {f"{random_cat}": "$_id", random_quant_var: 1, "_id": 0}},{"$limit": 5}]
-    query_string = f"collection.aggregate({json.dumps(query)})"
+    pipeline = [{"$group": {"_id": f"${random_cat}", f"Average {random_quant}": {"$avg": f"${random_quant}"}}}, 
+                                         {"$project": {f"{random_cat}": "$_id", f"Average {random_quant}": 1, "_id": 0}},{"$limit": 5}]
+    if sort_field:
+        pipeline.append({"$sort": {sort_field: order_val}})
+        nat_language = nat_language + " sorted by " + sort_field + " in " + order + " order"
+    pipeline.append({"$limit": limit})
+    query_result = collection.aggregate(pipeline)
+    query_string = f"collection.aggregate({json.dumps(pipeline)})"
     return [query_result, query_string, nat_language, "Average"]
 
 def gen_counts_query(cat_cols, collectionName, specific_cat=None):
