@@ -320,11 +320,6 @@ def categorize_columns(dataframe):
     return categorical, quantitative
 
 def tokenize_with_operators(user_input):
-    """
-    Tokenizes the input string and ensures that logical operators like 'and' and 'or' are captured as separate tokens.
-    """
-    import re
-
     # Regular expression to capture words, numbers, comparison operators, and logical operators
     pattern = r'\b(and|or)\b|[a-zA-Z_]+|[<>!=]+|\d+'
 
@@ -332,6 +327,7 @@ def tokenize_with_operators(user_input):
     tokens = re.findall(pattern, user_input.lower())
 
     return [token.strip() for token in tokens if token.strip()]
+
 def generate_sql_query(user_input, uploaded_columns, table_name, data):
     # Step 1: Process the input query using NLP processing (basic tokenization and stemming)
     tokens = process_input(user_input)
@@ -462,7 +458,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
 
     i = 0
     while i < len(tokens1):
-        token = tokens1[i]
+        token = tokens[i]
         
         # Match a quantitative column
         matched_column = None
@@ -473,36 +469,35 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
 
         if matched_column:
             operator = None
-            if i + 1 < len(tokens1) and tokens1[i + 1] in operators:
+            if i + 1 < len(tokens) and tokens[i + 1] in operators:
                 operator = operators[tokens1[i + 1]]
                 i += 1  # Move to operator token
             
             if operator and operator != "BETWEEN":
                 # Handle single value operators (<, >, =, !=)
-                if i + 1 < len(tokens1) and tokens1[i + 1].isdigit():
-                    value = tokens1[i + 1]
+                if i + 1 < len(tokens) and tokens[i + 1].isdigit():
+                    value = tokens[i + 1]
                     conditions.append(f"{matched_column} {operator} {value}")
                     i += 1  # Move past the value
             elif operator == "BETWEEN":
                 # Handle BETWEEN operator with two values
-                if i + 2 < len(tokens1) and tokens1[i + 1].isdigit() and tokens1[i + 2].isdigit():
-                    value1 = tokens1[i + 1]
-                    value2 = tokens1[i + 2]
+                if i + 2 < len(tokens) and tokens[i + 1].isdigit() and tokens[i + 2].isdigit():
+                    value1 = tokens[i + 1]
+                    value2 = tokens[i + 2]
                     conditions.append(f"{matched_column} {operator} {value1} AND {value2}")
                     i += 2  # Move past the two values
         
         # Handle conjunctions
-        elif token1 in conjunctions:
-            if conditions and token1.lower() in conjunctions:
-                conditions.append(token.upper())
+        elif token in conjunctions:
+            if conditions and token.lower() in conjunctions:
+                conditions.append(token1.upper())
         
         i += 1
         
-    if len(conditions) > 1:
-        if "OR" in conditions:
-            where_clause = " OR ".join(conditions)  # Join with OR if explicit OR exists
-        else:
-              where_clause = " AND ".join(conditions)  # Default to AND
+    if "or" in token1:
+        where_clause = " OR ".join(conditions)  # Join with OR if explicit OR exists
+    elif "and" in token1:
+        where_clause = " AND ".join(conditions)  # Default to AND
     else:
         where_clause = " ".join(conditions)
 
