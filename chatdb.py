@@ -370,7 +370,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
             nat_lang_query = f"Average {quant_col} by {cat_col}"
             return nat_lang_query, sql_query
 
-    # Step 6: Handle 'maximum' or 'max' queries
+    # Handle 'maximum' or 'max' queries
     if any(word in tokens for word in ["maximum", "max"]):
         # Match quantitative column
         matched_column = None
@@ -385,7 +385,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
             nat_lang_query = f"Maximum {matched_column}"
             return nat_lang_query, sql_query
 
-    # Step 7: Handle 'minimum' or 'min' queries
+    # Handle 'minimum' or 'min' queries
     if any(word in tokens for word in ["minimum", "min"]):
         # Match quantitative column
         matched_column = None
@@ -399,7 +399,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
             nat_lang_query = f"Minimum {matched_column}"
             return nat_lang_query, sql_query
 
-    # Step 8: Handle comparison queries ('less than', 'greater than', 'equal to')
+    # Handle comparison queries ('less than', 'greater than', 'equal to')
     if any(word in tokens for word in ["less", "greater", "equal", "not"]):
         # Identify the quantitative column and value for comparison
         matched_column = None
@@ -444,7 +444,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
         "between": "BETWEEN"
     }
     conjunctions = ["and", "or"]
-
+    
     i = 0
     while i < len(tokens):
         token = tokens[i]
@@ -462,21 +462,22 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
                 operator = operators[tokens[i + 1]]
                 i += 1  # Move to operator token
             
-            if operator == "BETWEEN":
+            if operator and operator != "BETWEEN":
+                # Handle single value operators (<, >, =, !=)
+                if i + 1 < len(tokens) and tokens[i + 1].isdigit():
+                    value = tokens[i + 1]
+                    conditions.append(f"{matched_column} {operator} {value}")
+                    i += 1  # Move past the value
+            elif operator == "BETWEEN":
                 # Handle BETWEEN operator with two values
                 if i + 2 < len(tokens) and tokens[i + 1].isdigit() and tokens[i + 2].isdigit():
                     value1 = tokens[i + 1]
                     value2 = tokens[i + 2]
                     conditions.append(f"{matched_column} {operator} {value1} AND {value2}")
                     i += 2  # Move past the two values
-            elif operator and i + 1 < len(tokens) and tokens[i + 1].isdigit():
-                # Handle single value operators (<, >, =, !=)
-                value = tokens[i + 1]
-                conditions.append(f"{matched_column} {operator} {value}")
-                i += 1  # Move past the value
         
         # Handle conjunctions
-        if token in conjunctions:
+        elif token in conjunctions:
             conditions.append(token.upper())
         
         i += 1
