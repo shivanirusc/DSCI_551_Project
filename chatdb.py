@@ -159,23 +159,6 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
                 sql_query = f"SELECT {cat}, COUNT(*) as count_{cat} FROM {table_name} GROUP BY {cat}"
                 nat_lang_query = f"Count of {cat}"
                 return nat_lang_query, sql_query
-        
-    # # Handle sum and total queries
-    # if "sum" in tokens or "total" in tokens:
-    #     column = map_columns(tokens, quantitative_columns)  # Identify the quantitative column
-    #     group_by_column = map_columns(tokens, categorical_columns)  # Identify the categorical column
-    #     if column and group_by_column:  # Ensure both column mappings exist
-    #         sql_query = f"SELECT {group_by_column}, SUM({column}) as total_{column} FROM {table_name} GROUP BY {group_by_column}"
-    #         nat_lang_query = f"Sum of {column} grouped by {group_by_column}"
-    #         return nat_lang_query, sql_query
-    
-    # # Handle 'count' queries
-    # if "count" in tokens or "many" in tokens:  # Include synonyms like "many"
-    #  for cat in categorical_columns:
-    #      if any(token in cat.lower() for token in tokens):
-    #          sql_query = f"SELECT {cat}, COUNT(*) as count_{cat} FROM {table_name} GROUP BY {cat}"
-    #          nat_lang_query = f"Count of {cat}"
-    #          return nat_lang_query, sql_query
     
     # Handle 'average' or 'avg' queries
     if any(word in tokens for word in ["average", "avg"]):
@@ -371,20 +354,6 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
         nat_lang_query = f"Rows where {where_clause}"
         return nat_lang_query, sql_query
 
-    # Handle data filtering
-    if "from" in tokens and "to" in tokens:
-        combined_tokens = generate_combined_tokens(tokens)
-        date_column = next((col for col in categorical_columns if "date" in col.lower()), None)
-
-        if date_column:
-            date_indices = [i for i, token in enumerate(tokens) if token in ["from", "to"]]
-            if len(date_indices) == 2 and date_indices[1] > date_indices[0]:
-                start_date = tokens[date_indices[0] + 1]
-                end_date = tokens[date_indices[1] + 1]
-                sql_query = f"SELECT * FROM {table_name} WHERE {date_column} BETWEEN '{start_date}' AND '{end_date}'"
-                nat_lang_query = f"Rows where {date_column} is between '{start_date}' and '{end_date}'"
-                return nat_lang_query, sql_query
-    
     # Fallback in case no match is found
     return "Query could not be interpreted. Please try rephrasing.", ""
 
