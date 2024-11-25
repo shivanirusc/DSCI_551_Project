@@ -467,7 +467,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
         # Match a quantitative column
         matched_column = None
         for quant in quantitative_columns:
-            if token1 in quant.lower():
+            if token in quant.lower():
                 matched_column = quant
                 break
 
