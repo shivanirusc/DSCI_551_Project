@@ -356,22 +356,58 @@ if data is not None:
     user_input = st.text_input("Type your query here:")
 
     if user_input and uploaded_columns:
-        nat_lang_query, query = generate_sql_query(user_input, uploaded_columns, table_name, data)
+        nat_lang_query, query = generate_query(user_input, uploaded_columns, table_name, data, filetype)
 
-        # Initialize chat history if not already present
-        if "chat_history" not in st.session_state:
-            st.session_state["chat_history"] = []
+        # Add to chat history only if a valid query is generated
+        if query:
+            # Initialize chat history if not already present
+            if "chat_history" not in st.session_state:
+                st.session_state["chat_history"] = []
 
-        # Add current query and response to chat history
-        st.session_state["chat_history"].append({
-            "user_input": user_input,
-            "nat_lang_query": nat_lang_query,
-            "query": query
-        })
+            # Add current query and response to chat history
+            st.session_state["chat_history"].append({
+                "user_input": user_input,
+                "nat_lang_query": nat_lang_query,
+                "query": query
+            })
 
-        # Display chat history
+        # Explanation Section
         st.write("---")
-        st.subheader("Chat History 🕒")
+        st.subheader("Query Explanation 📝")
+        if query:
+            if filetype == "csv" and isinstance(query, str):
+                explanation = "This SQL query fetches data from the uploaded table based on the conditions."
+            elif filetype == "json" and isinstance(query, list):
+                explanation = "This NoSQL aggregation pipeline retrieves documents matching the specified criteria."
+            else:
+                explanation = "Unable to explain the query."
+            st.write(explanation)
+        else:
+            st.error(nat_lang_query)
+
+        # Results Section
+        st.write("---")
+        st.subheader("Query Results 📊")
+        if query:
+            try:
+                if filetype == "csv":
+                    conn = sqlite3.connect("chatdb_sql.db")
+                    result = pd.read_sql_query(query, conn)
+                    st.dataframe(result)
+                elif filetype == "json":
+                    collection = mongo_db[table_name]
+                    result = list(collection.aggregate(query))
+                    result_df = pd.DataFrame(result)
+                    st.dataframe(result_df)
+            except Exception as e:
+                st.error(f"Error executing query: {e}")
+        else:
+            st.error("No results generated for this query.")
+
+    # Chat History Section
+    st.write("---")
+    st.subheader("Chat History 🕒")
+    if "chat_history" in st.session_state:
         for idx, chat in enumerate(st.session_state["chat_history"]):
             user_query = chat.get("user_input", "Unknown query")
             response = chat.get("nat_lang_query", "Unknown response")
@@ -380,33 +416,5 @@ if data is not None:
             st.write(f"**You:** {user_query}")
             st.write(f"**ChatDB:** {response}")
             st.code(generated_query)
-
-        # Explanation Section
-        st.write("---")
-        st.subheader("Query Explanation 📝")
-        if filetype == "csv" and isinstance(query, str):
-            explanation = "This SQL query fetches data from the uploaded table based on the conditions."
-        elif filetype == "json" and isinstance(query, list):
-            explanation = "This NoSQL aggregation pipeline retrieves documents matching the specified criteria."
-        else:
-            explanation = "Unable to explain the query."
-        st.write(explanation)
-
-        # Results Section
-        st.write("---")
-        st.subheader("Query Results 📊")
-        try:
-            if filetype == "csv":
-                conn = sqlite3.connect("chatdb_sql.db")
-                result = pd.read_sql_query(query, conn)
-                st.dataframe(result)
-            elif filetype == "json":
-                collection = mongo_db[table_name]
-                result = list(collection.aggregate(query))
-                result_df = pd.DataFrame(result)
-                st.dataframe(result_df)
-        except Exception as e:
-            st.error(f"Error executing query: {e}")
-
 else:
     st.write("Please upload a dataset to start interacting with ChatDB.")
