@@ -243,6 +243,7 @@ from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 import os
+import re
 
 from sql_sample_queries import generate_sample_queries
 
