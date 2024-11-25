@@ -356,7 +356,7 @@ if data is not None:
     user_input = st.text_input("Type your query here:")
 
     if user_input and uploaded_columns:
-        nat_lang_query, query = generate_query(user_input, uploaded_columns, table_name, data, filetype)
+        nat_lang_query, query = generate_query(user_input, uploaded_columns, table_name, data)
 
         # Initialize chat history if not already present
         if "chat_history" not in st.session_state:
