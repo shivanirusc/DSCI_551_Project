@@ -367,7 +367,24 @@ if data is not None:
 
     if user_input and uploaded_columns:
         if filetype == "csv":
-            nat_lang_query, query = generate_sql_query(user_input, uploaded_columns, table_name, data)
+
+            # Generates example sql queries if user enters "example sql query" into query box
+            if user_input.lower() == "example sql query":
+                
+                nat_lang_query, query = generate_sample_queries(table_name, data) # Generate sample queries
+
+            # Generates example sql queries for a specified language construct if user enters "example sql query with ____"
+            elif "example sql query with" in user_input.lower():
+                # Extract the construct from the user input
+                construct = user_input.lower().replace("example sql query with", "").strip() 
+                nat_lang_query, query = generate_construct_queries(construct, table_name, data) # Generate queries based on the specified construct
+
+                # Error checking if user doesn't enter a valid construct
+                if query == 0:
+                    st.write("Please specify a construct among the following: 'group by', 'where', 'having', 'order by', 'aggregation'" )
+
+            else:
+                nat_lang_query, query = generate_sql_query(user_input, uploaded_columns, table_name, data)
         else:
             res = get_mongo_queries_nat(tokens, categorical, numeric, unique, range_vals, collection_name)
             if res:
