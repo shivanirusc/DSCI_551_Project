@@ -478,7 +478,8 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
         
         # Handle conjunctions
         elif token in conjunctions:
-            conditions.append(token.upper())
+            if conditions:  # Add the conjunction only if there are prior conditions
+                conditions.append(token.upper())
         
         i += 1
 
