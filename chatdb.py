@@ -356,12 +356,12 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     
         # Match quantitative and categorical columns
         for quant in quantitative_columns:
-            if quant in tokens:
+            if any(token in quant.lower() for token in tokens):
                 quant_col = quant
                 break  # Exit loop once a match is found
         
         for cat in categorical_columns:
-            if cat in tokens:
+            if any(token in cat.lower() for token in tokens):
                 cat_col = cat
                 break  # Exit loop once a match is found
         # Generate SQL query if both columns are matched
