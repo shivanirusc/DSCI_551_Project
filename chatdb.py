@@ -106,7 +106,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     # Step 3: Combine tokens to handle multi-word column names
     combined_tokens = [' '.join(tokens[i:j+1]) for i in range(len(tokens)) for j in range(i, len(tokens))]
     combined_tokens = [token.replace(' ', '_').lower() for token in combined_tokens]  # Format like column names
-    print(f"Combined Tokens: {combined_tokens}")
+    st.write(f"Combined Tokens: {combined_tokens}")
 
     # Step 4: Handle Top Aggregation Queries dynamically
     if any(word in tokens for word in ["highest", "top"]):
