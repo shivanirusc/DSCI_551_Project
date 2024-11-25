@@ -311,12 +311,12 @@ def categorize_columns(dataframe):
     return categorical, quantitative
 
 # Function to generate SQL queries dynamically based on the input query
-def generate_query(input_query, df, table_name):
+def generate_query((user_input, uploaded_columns, table_name, data):
     # Step 1: Process the input query using NLP processing
-    tokens = process_input(input_query)
+    tokens = process_input(user_input)
     
     # Step 2: Categorize columns in the DataFrame
-    categorical_columns, quantitative_columns = categorize_columns(df)
+    categorical_columns, quantitative_columns = categorize_columns(data)
 
     # 1. Average query: "average <A> by <B>"
     if "average" in tokens or "avg" in tokens:
