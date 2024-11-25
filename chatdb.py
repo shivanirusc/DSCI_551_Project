@@ -336,27 +336,31 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
                     nat_lang_query = f"Rows where {cat} contains '{search_value}'"
                     return nat_lang_query, sql_query
 
-
     # Handle custom aggregations
     if "total" in tokens and "average" in tokens:
-        sum_column = map_columns(tokens, quantitative_columns)
-        avg_column = map_columns(tokens, quantitative_columns)
-        group_by_column = map_columns(tokens, categorical_columns)
+        combined_tokens = generate_combined_tokens(tokens)
+        sum_column = next((col for col in quantitative_columns if col.lower() in combined_tokens), None)
+        avg_column = next((col for col in quantitative_columns if col.lower() in combined_tokens), None)
+        group_by_column = next((col for col in categorical_columns if col.lower() in combined_tokens), None)
 
-    if sum_column and avg_column and group_by_column:
-        sql_query = f"SELECT {group_by_column}, SUM({sum_column}) as total_{sum_column}, AVG({avg_column}) as avg_{avg_column} FROM {table_name} GROUP BY {group_by_column}"
-        nat_lang_query = f"Total {sum_column} and average {avg_column} grouped by {group_by_column}"
-        return nat_lang_query, sql_query
+        if sum_column and avg_column and group_by_column:
+            sql_query = (f"SELECT {group_by_column}, SUM({sum_column}) as total_{sum_column}, "
+                         f"AVG({avg_column}) as avg_{avg_column} FROM {table_name} GROUP BY {group_by_column}")
+            nat_lang_query = f"Total {sum_column} and average {avg_column} grouped by {group_by_column}"
+            return nat_lang_query, sql_query
+
 
     # Handle range queries
     ranges = []
+    combined_tokens = generate_combined_tokens(tokens)
     i = 0
     while i < len(tokens):
         if tokens[i] == "between" and i + 2 < len(tokens):
-            column = map_columns([tokens[i - 1]], quantitative_columns)
-            if column and tokens[i + 1].isdigit() and tokens[i + 2].isdigit():
-                start = tokens[i + 1]
-                end = tokens[i + 2]
+            column = next((col for col in quantitative_columns if col.lower() in combined_tokens), None)
+            start, end = tokens[i + 1], tokens[i + 2]
+        
+            # Validate start and end as numbers
+            if column and re.match(r'^\d+(\.\d+)?$', start) and re.match(r'^\d+(\.\d+)?$', end):
                 ranges.append(f"{column} BETWEEN {start} AND {end}")
                 i += 2
         i += 1
@@ -369,14 +373,17 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
 
     # Handle data filtering
     if "from" in tokens and "to" in tokens:
-        date_column = "sale_date"  # Example fixed date column
-        date_indices = [i for i, token in enumerate(tokens) if token in ["from", "to"]]
-        if len(date_indices) == 2 and date_indices[1] > date_indices[0]:
-            start_date = tokens[date_indices[0] + 1]
-            end_date = tokens[date_indices[1] + 1]
-            sql_query = f"SELECT * FROM {table_name} WHERE {date_column} BETWEEN '{start_date}' AND '{end_date}'"
-            nat_lang_query = f"Rows where {date_column} is between {start_date} and {end_date}"
-            return nat_lang_query, sql_query
+        combined_tokens = generate_combined_tokens(tokens)
+        date_column = next((col for col in categorical_columns if "date" in col.lower()), None)
+
+        if date_column:
+            date_indices = [i for i, token in enumerate(tokens) if token in ["from", "to"]]
+            if len(date_indices) == 2 and date_indices[1] > date_indices[0]:
+                start_date = tokens[date_indices[0] + 1]
+                end_date = tokens[date_indices[1] + 1]
+                sql_query = f"SELECT * FROM {table_name} WHERE {date_column} BETWEEN '{start_date}' AND '{end_date}'"
+                nat_lang_query = f"Rows where {date_column} is between '{start_date}' and '{end_date}'"
+                return nat_lang_query, sql_query
     
     # Fallback in case no match is found
     return "Query could not be interpreted. Please try rephrasing.", ""
