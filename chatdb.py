@@ -333,7 +333,7 @@ def extract_join_info(user_input, uploaded_columns):
         join_table = table_match.group(2)
     else:
         # Default case if no join tables are explicitly mentioned
-        table_name = "product_data"  # Assuming default base table if not provided
+        table_name = "sales"  # Assuming default base table if not provided
     
     # Extract the column names for the join condition (e.g., "product_data.category = category_data.category")
     join_condition_match = re.search(r"on\s+(\w+\.\w+)\s*=\s*(\w+\.\w+)", user_input)
@@ -531,18 +531,6 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
         sql_query = f"SELECT * FROM {table_name}"
         return user_input, sql_query
     
-    
-    # Initialize join_type, join_table, and join_columns
-    join_type, join_table, join_columns = extract_join_info(user_input, uploaded_columns)
-    
-    # Construct the SQL query based on extracted information
-    if join_type and join_table and join_columns:
-        sql_query = f"SELECT * FROM {table_name} {join_type} JOIN {join_table} ON {join_columns[0]} = {join_columns[1]}"
-        return user_input, sql_query
-    else:
-        sql_query = f"SELECT * FROM {table_name}"
-        return user_input, sql_query
-
     # 2. Aggregation with JOIN (e.g., SUM, AVG)
     if "total" in tokens or "sum" in tokens or "average" in tokens or "avg" in tokens:
         for quant in quantitative_columns:
