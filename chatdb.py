@@ -485,7 +485,10 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
 
     # Ensure valid query syntax by adding conjunctions if missing
     if len(conditions) > 1:
-        where_clause = " AND ".join(conditions)  # Default to AND if no explicit conjunction
+        if "OR" in conditions:
+            where_clause = " OR ".join(conditions)  # Join with OR if explicit OR exists
+        else:
+            where_clause = " AND ".join(conditions)  # Default to AND
     else:
         where_clause = " OR ".join(conditions)
 
