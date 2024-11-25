@@ -247,7 +247,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
         # Handle conjunctions
         elif token in conjunctions:
             if conditions and token.lower() in conjunctions:
-                conditions.append(token1.upper())
+                conditions.append(token.upper())
         
         i += 1
         
