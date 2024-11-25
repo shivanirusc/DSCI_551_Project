@@ -103,20 +103,25 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     st.write(f"categorical_columns extracted: {categorical_columns}")
     st.write(f"quantitative_columns extracted: {quantitative_columns}")
 
-    # Handle Top-N Queries
+    # Step 3: Combine tokens to handle multi-word column names
+    combined_tokens = [' '.join(tokens[i:j+1]) for i in range(len(tokens)) for j in range(i, len(tokens))]
+    combined_tokens = [token.replace(' ', '_').lower() for token in combined_tokens]  # Format like column names
+    print(f"Combined Tokens: {combined_tokens}")
+
+    # Step 4: Handle Top Aggregation Queries dynamically
     if any(word in tokens for word in ["highest", "top"]):
         quant_col = None
         cat_col = None
 
-        # Match tokens to quantitative columns (e.g., "profit_margin")
+        # Match combined tokens to quantitative columns (e.g., "profit_margin")
         for quant in quantitative_columns:
-            if any(token in quant.lower() for token in tokens):
+            if quant.lower() in combined_tokens:
                 quant_col = quant
                 break
 
-        # Match tokens to categorical columns (e.g., "region")
+        # Match combined tokens to categorical columns (e.g., "region")
         for cat in categorical_columns:
-            if any(token in cat.lower() for token in tokens):
+            if cat.lower() in combined_tokens:
                 cat_col = cat
                 break
 
@@ -125,13 +130,6 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
             sql_query = f"SELECT {cat_col}, MAX({quant_col}) as max_{quant_col} FROM {table_name} GROUP BY {cat_col}"
             nat_lang_query = f"Highest {quant_col} by {cat_col}"
             print(f"Generated SQL Query: {sql_query}")
-            return nat_lang_query, sql_query
-
-        # Generate SQL query if both column mappings are found
-        if quant_col and cat_col:
-            sql_query = f"SELECT {cat_col}, MAX({quant_col}) as max_{quant_col} FROM {table_name} GROUP BY {cat_col}"
-            nat_lang_query = f"Top {quant_col} for each {cat_col}"
-            st.write(f"Generated SQL Query: {sql_query}")
             return nat_lang_query, sql_query
         
     # Handle sum and total queries
