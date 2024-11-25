@@ -107,7 +107,6 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     if "sum" in tokens or "total" in tokens:
         column = map_columns(tokens, quantitative_columns)  # Identify the quantitative column
         group_by_column = map_columns(tokens, categorical_columns)  # Identify the categorical column
-
         if column and group_by_column:  # Ensure both column mappings exist
             sql_query = f"SELECT {group_by_column}, SUM({column}) as total_{column} FROM {table_name} GROUP BY {group_by_column}"
             nat_lang_query = f"Sum of {column} grouped by {group_by_column}"
@@ -116,7 +115,6 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     # Handle 'count' queries
     if "count" in tokens or "many" in tokens:  # Include synonyms like "many"
      for cat in categorical_columns:
-         # Check for exact or partial matches
          if any(token in cat.lower() for token in tokens):
              sql_query = f"SELECT {cat}, COUNT(*) as count_{cat} FROM {table_name} GROUP BY {cat}"
              nat_lang_query = f"Count of {cat}"
@@ -137,7 +135,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
             if any(token in cat.lower() for token in tokens):
                 cat_col = cat
                 break  # Exit loop once a match is found
-        # Generate SQL query if both columns are matched
+        
         if quant_col and cat_col:
             sql_query = f"SELECT {cat_col}, AVG({quant_col}) as average_{quant_col} FROM {table_name} GROUP BY {cat_col}"
             nat_lang_query = f"Average {quant_col} by {cat_col}"
@@ -151,8 +149,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
             if any(token in quant.lower() for token in tokens):
                 matched_column = quant
                 break  # Exit loop once a match is found
-
-        # Generate SQL query if a quantitative column is matched
+            
         if matched_column:
             sql_query = f"SELECT '{matched_column}', MAX({matched_column}) as max_{matched_column} FROM {table_name}"
             nat_lang_query = f"Maximum {matched_column}"
@@ -172,6 +169,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
             nat_lang_query = f"Minimum {matched_column}"
             return nat_lang_query, sql_query
 
+    # Handle 'greater', 'less', 'equal', 'not equal', 'between'
     tokens1 = tokenize_with_operators(user_input)
     st.write(f"Tokens1 extracted: {tokens1}")
     # Initialize components for SQL conditions
@@ -230,13 +228,13 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     else:
         where_clause = " ".join(conditions)
 
-    # Generate SQL query
     if where_clause:
         sql_query = f"SELECT * FROM {table_name} WHERE {where_clause}"
         nat_lang_query = f"Rows where {where_clause}"
         print(f"Generated query: {sql_query}")
         return nat_lang_query, sql_query
-   
+
+    # Handle nested conditions and logical operators
     if "(" in tokens or ")" in tokens:
         # Support for nested conditions
         nested_conditions = []
@@ -267,6 +265,67 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     sql_query = f"SELECT * FROM {table_name} WHERE {where_clause}"
     nat_lang_query = f"Rows where {where_clause}"
     return nat_lang_query, sql_query
+
+    # Handle wildcard searches
+    if "contains" in tokens or "like" in tokens:
+    for cat in categorical_columns:
+        if any(token in cat.lower() for token in tokens):
+            value = [token for token in tokens if token not in ["contains", "like"]]
+            search_value = value[-1] if value else ""
+            sql_query = f"SELECT * FROM {table_name} WHERE {cat} LIKE '%{search_value}%'"
+            nat_lang_query = f"Rows where {cat} contains {search_value}"
+            return nat_lang_query, sql_query
+
+    # Handle custom aggregations
+    if "total" in tokens and "average" in tokens:
+    sum_column = map_columns(tokens, quantitative_columns)
+    avg_column = map_columns(tokens, quantitative_columns)
+    group_by_column = map_columns(tokens, categorical_columns)
+
+    if sum_column and avg_column and group_by_column:
+        sql_query = f"SELECT {group_by_column}, SUM({sum_column}) as total_{sum_column}, AVG({avg_column}) as avg_{avg_column} FROM {table_name} GROUP BY {group_by_column}"
+        nat_lang_query = f"Total {sum_column} and average {avg_column} grouped by {group_by_column}"
+        return nat_lang_query, sql_query
+
+    # Handle range queries
+    ranges = []
+    i = 0
+    while i < len(tokens):
+        if tokens[i] == "between" and i + 2 < len(tokens):
+            column = map_columns([tokens[i - 1]], quantitative_columns)
+            if column and tokens[i + 1].isdigit() and tokens[i + 2].isdigit():
+                start = tokens[i + 1]
+                end = tokens[i + 2]
+                ranges.append(f"{column} BETWEEN {start} AND {end}")
+                i += 2
+        i += 1
+
+    if ranges:
+        where_clause = " AND ".join(ranges)
+        sql_query = f"SELECT * FROM {table_name} WHERE {where_clause}"
+        nat_lang_query = f"Rows where {where_clause}"
+        return nat_lang_query, sql_query
+
+    # Handle Top-N Queries
+    if "top" in tokens:
+        for quant in quantitative_columns:
+            if quant in tokens:
+                top_n = [int(token) for token in tokens if token.isdigit()]
+                top_n = top_n[0] if top_n else 5  # Default to top 5 if not specified
+                sql_query = f"SELECT * FROM {table_name} ORDER BY {quant} DESC LIMIT {top_n}"
+                nat_lang_query = f"Top {top_n} products by {quant}"
+                return nat_lang_query, sql_query
+
+    # Handle data filtering
+    if "from" in tokens and "to" in tokens:
+        date_column = "sale_date"  # Example fixed date column
+        date_indices = [i for i, token in enumerate(tokens) if token in ["from", "to"]]
+        if len(date_indices) == 2 and date_indices[1] > date_indices[0]:
+            start_date = tokens[date_indices[0] + 1]
+            end_date = tokens[date_indices[1] + 1]
+            sql_query = f"SELECT * FROM {table_name} WHERE {date_column} BETWEEN '{start_date}' AND '{end_date}'"
+            nat_lang_query = f"Rows where {date_column} is between {start_date} and {end_date}"
+            return nat_lang_query, sql_query
     
     # Fallback in case no match is found
     return "Query could not be interpreted. Please try rephrasing.", ""
