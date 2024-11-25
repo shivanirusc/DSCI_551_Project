@@ -399,40 +399,40 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
             nat_lang_query = f"Minimum {matched_column}"
             return nat_lang_query, sql_query
 
-    # Handle comparison queries ('less than', 'greater than', 'equal to')
-    if any(word in tokens for word in ["less", "greater", "equal", "not"]):
-        # Identify the quantitative column and value for comparison
-        matched_column = None
-        comparison_operator = None
-        comparison_value = None
+    # # Handle comparison queries ('less than', 'greater than', 'equal to')
+    # if any(word in tokens for word in ["less", "greater", "equal", "not"]):
+    #     # Identify the quantitative column and value for comparison
+    #     matched_column = None
+    #     comparison_operator = None
+    #     comparison_value = None
 
-        # Match a quantitative column
-        for quant in quantitative_columns:
-            if any(token in quant.lower() for token in tokens):
-                matched_column = quant
-                break  # Exit loop once a match is found
+    #     # Match a quantitative column
+    #     for quant in quantitative_columns:
+    #         if any(token in quant.lower() for token in tokens):
+    #             matched_column = quant
+    #             break  # Exit loop once a match is found
 
-        # Identify comparison operator
-        if "less" in tokens:
-            comparison_operator = "<"
-        elif "greater" in tokens:
-            comparison_operator = ">"
-        elif "equal" in tokens:
-            comparison_operator = "="
-        elif "not" in tokens and "equal" in tokens:
-            comparison_operator = "!="
+    #     # Identify comparison operator
+    #     if "less" in tokens:
+    #         comparison_operator = "<"
+    #     elif "greater" in tokens:
+    #         comparison_operator = ">"
+    #     elif "equal" in tokens:
+    #         comparison_operator = "="
+    #     elif "not" in tokens and "equal" in tokens:
+    #         comparison_operator = "!="
 
-        # Extract the value for comparison
-        for token in tokens:
-            if token.isdigit():
-                comparison_value = token
-                break  # Exit loop once a number is found
+    #     # Extract the value for comparison
+    #     for token in tokens:
+    #         if token.isdigit():
+    #             comparison_value = token
+    #             break  # Exit loop once a number is found
 
-        # Generate SQL query if both column and value are identified
-        if matched_column and comparison_operator and comparison_value:
-            sql_query = f"SELECT * FROM {table_name} WHERE {matched_column} {comparison_operator} {comparison_value}"
-            nat_lang_query = f"Rows where {matched_column} is {comparison_operator} {comparison_value}"
-            return nat_lang_query, sql_query
+    #     # Generate SQL query if both column and value are identified
+    #     if matched_column and comparison_operator and comparison_value:
+    #         sql_query = f"SELECT * FROM {table_name} WHERE {matched_column} {comparison_operator} {comparison_value}"
+    #         nat_lang_query = f"Rows where {matched_column} is {comparison_operator} {comparison_value}"
+    #         return nat_lang_query, sql_query
     
     # Initialize components for SQL conditions
     conditions = []
