@@ -3,3 +3,4 @@ pandas
 nltk
 pymongo
 tabulate
+streamlit_extras
