@@ -486,10 +486,15 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     # Join conditions with proper logic
     where_clause = " ".join(conditions)
 
+    # Ensure valid query syntax by adding conjunctions
+    if len(conditions) > 1 and not any(conj in where_clause for conj in conjunctions):
+        where_clause = " AND ".join(conditions)
+
     # Generate SQL query
     if where_clause:
         sql_query = f"SELECT * FROM {table_name} WHERE {where_clause}"
         nat_lang_query = f"Rows where {where_clause}"
+        print(f"Generated query: {sql_query}")
         return nat_lang_query, sql_query
     
     # Fallback in case no match is found
