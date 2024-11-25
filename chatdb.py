@@ -259,9 +259,11 @@ def download_nltk_resources():
 # Call the download function
 download_nltk_resources()
 
-# Define the basic tokenizer (splitting on spaces and lowering text)
-def basic_tokenizer(text):
-    return text.lower().split()
+# Function to tokenize input
+def basic_tokenizer(user_input):
+    # Remove punctuation and tokenize
+    tokens = re.sub(r'[^\w\s]', '', user_input.lower()).split()
+    return tokens
 
 # Initialize MongoDB
 mongo_client = MongoClient("mongodb://localhost:27017/")
