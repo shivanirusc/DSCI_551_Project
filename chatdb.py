@@ -374,6 +374,11 @@ if data is not None:
                 "query": query
             })
 
+        st.markdown(f"**Query {idx + 1}:**")
+        st.write(f"**You:** {user_query}")
+        st.write(f"**ChatDB:** {response}")
+        st.code(query)
+        
         # Explanation Section
         st.write("---")
         st.subheader("Query Explanation 📝")
