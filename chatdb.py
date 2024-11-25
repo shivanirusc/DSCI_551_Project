@@ -98,7 +98,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     
     st.write(f"Tokens extracted: {tokens}")
 
-    # Step 2: Categorize columns in the DataFrame (categorical vs. quantitative)
+    # Step 2: Dynamically categorize columns in the DataFrame
     categorical_columns, quantitative_columns = categorize_columns(data)
     st.write(f"categorical_columns extracted: {categorical_columns}")
     st.write(f"quantitative_columns extracted: {quantitative_columns}")
@@ -108,6 +108,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     combined_tokens = [token.replace(' ', '_').lower() for token in combined_tokens]  # Format like column names
     st.write(f"Combined Tokens: {combined_tokens}")
 
+    # Step 4: Handle Top Aggregation Queries dynamically
     if any(word in tokens for word in ["highest", "top"]):
         quant_col = None
         cat_col = None
