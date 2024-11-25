@@ -308,7 +308,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
         return nat_lang_query, sql_query
 
     # Handle Top-N Queries
-     if "top" in tokens:
+    if "top" in tokens:
         for quant in quantitative_columns:
             # Match singular/plural forms of the quantitative column
             if any(token in quant.lower() for token in tokens):
