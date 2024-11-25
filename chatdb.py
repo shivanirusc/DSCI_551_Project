@@ -433,7 +433,72 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
             sql_query = f"SELECT * FROM {table_name} WHERE {matched_column} {comparison_operator} {comparison_value}"
             nat_lang_query = f"Rows where {matched_column} is {comparison_operator} {comparison_value}"
             return nat_lang_query, sql_query
+    
+    # Handle AND OR type queries
+    conditions = []
+    operators = {
+        "less": "<",
+        "greater": ">",
+        "equal": "=",
+        "not equal": "!=",
+        "between": "BETWEEN"
+    }
+    conjunctions = ["and", "or"]
 
+    # Track the current conjunction (AND/OR)
+    current_conjunction = "AND"
+
+    # Iterate over tokens to parse conditions
+    i = 0
+    while i < len(tokens):
+        token = tokens[i]
+        
+        # Check if token matches a quantitative column
+        matched_column = None
+        for quant in quantitative_columns:
+            if token in quant.lower():
+                matched_column = quant
+                break
+        
+        # If a column is matched, look for an operator and value(s)
+        if matched_column:
+            operator = None
+            if i + 1 < len(tokens) and tokens[i + 1] in operators:
+                operator = operators[tokens[i + 1]]
+                i += 1  # Move to operator token
+            
+            if operator == "BETWEEN":
+                # Handle BETWEEN operator with two values
+                if i + 2 < len(tokens) and tokens[i + 1].isdigit() and tokens[i + 2].isdigit():
+                    value1 = tokens[i + 1]
+                    value2 = tokens[i + 2]
+                    conditions.append(f"{matched_column} {operator} {value1} AND {value2}")
+                    i += 2  # Move past the two values
+            elif operator and i + 1 < len(tokens) and tokens[i + 1].isdigit():
+                # Handle single value operators (<, >, =, !=)
+                value = tokens[i + 1]
+                conditions.append(f"{matched_column} {operator} {value}")
+                i += 1  # Move past the value
+        
+        # Check for conjunctions
+        elif token in conjunctions:
+            current_conjunction = token.upper()
+        
+        # Append conjunction between conditions
+        if len(conditions) > 1 and current_conjunction:
+            conditions[-1] = f"{conditions[-2]} {current_conjunction} {conditions[-1]}"
+            conditions = [conditions[-1]]  # Collapse to single condition
+        
+        i += 1  # Move to the next token
+
+    # Generate SQL query
+    if conditions:
+        where_clause = " ".join(conditions)
+        sql_query = f"SELECT * FROM {table_name} WHERE {where_clause}"
+        nat_lang_query = f"Rows where {where_clause}"
+        print(f"Generated query: {sql_query}")
+        return nat_lang_query, sql_query
+    
     # Fallback in case no match is found
     return "Query could not be interpreted. Please try rephrasing.", ""
 
