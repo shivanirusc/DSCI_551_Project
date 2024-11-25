@@ -487,7 +487,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     if len(conditions) > 1:
         where_clause = " AND ".join(conditions)  # Default to AND if no explicit conjunction
     else:
-        where_clause = " ".join(conditions)
+        where_clause = " OR ".join(conditions)
 
     # Generate SQL query
     if where_clause:
