@@ -104,7 +104,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     st.write(f"quantitative_columns extracted: {quantitative_columns}")
 
     # Handle Top-N Queries
-    if "top" in tokens:
+    if "top" in tokens or "highest" in tokens:
         quant_col = None
         cat_col = None
 
