@@ -495,15 +495,40 @@ uploaded_columns = []
 collection_name = ""
 data = None
 
+# Dataset Upload Section
+st.sidebar.subheader("Upload Dataset")
+file = st.sidebar.file_uploader("Choose a CSV or JSON file:", type=["csv", "json"])
+uploaded_columns = []
+collection_name = ""
+data = None
+
 if file:
     filename = file.name
+    # Debugging: Check if file is uploaded
+    st.write(f"Uploaded file: {filename}")
     if allowed_file(filename):
-        data = pd.read_csv(file) if filename.endswith('.csv') else pd.read_json(file)
-        uploaded_columns = store_in_mongodb(data, filename)
-        collection_name = filename[:-5]
-        st.success(f"Dataset uploaded successfully! Columns in your data: {uploaded_columns}")
+        try:
+            # Process file based on extension
+            if filename.endswith('.csv'):
+                data = pd.read_csv(file)
+            elif filename.endswith('.json'):
+                data = pd.read_json(file)
+
+            # Debugging: Check if data is loaded correctly
+            st.write("Data loaded successfully.")
+            
+            # Store data in MongoDB
+            uploaded_columns = store_in_mongodb(data, filename)
+            collection_name = filename.rsplit('.', 1)[0]  # Remove file extension
+            st.success(f"Dataset uploaded successfully! Columns in your data: {uploaded_columns}")
+        except Exception as e:
+            # Handle errors during file processing
+            st.error(f"Error processing the file: {e}")
+            st.stop()
     else:
         st.error("Unsupported file type. Please upload a CSV or JSON file.")
+else:
+    st.info("Please upload a file to get started.")
 
 # Chat Interface
 if data is not None:
