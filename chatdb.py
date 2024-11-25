@@ -484,9 +484,9 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
         i += 1
         
     if len(conditions) > 1:
-        if "OR" in conditions[0]:
+        if "OR" in conditions:
             where_clause = " OR ".join(conditions)  # Join with OR if explicit OR exists
-        elif "AND" in conditions[0]:
+        else:
               where_clause = " AND ".join(conditions)  # Default to AND
     else:
         where_clause = " ".join(conditions)
