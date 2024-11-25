@@ -434,7 +434,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
             nat_lang_query = f"Rows where {matched_column} is {comparison_operator} {comparison_value}"
             return nat_lang_query, sql_query
     
-    # Handle AND OR type queries
+    # Initialize components for SQL conditions
     conditions = []
     operators = {
         "less": "<",
@@ -444,7 +444,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
         "between": "BETWEEN"
     }
     conjunctions = ["and", "or"]
-    
+
     i = 0
     while i < len(tokens):
         token = tokens[i]
@@ -489,7 +489,6 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     if where_clause:
         sql_query = f"SELECT * FROM {table_name} WHERE {where_clause}"
         nat_lang_query = f"Rows where {where_clause}"
-        print(f"Generated query: {sql_query}")
         return nat_lang_query, sql_query
     
     # Fallback in case no match is found
