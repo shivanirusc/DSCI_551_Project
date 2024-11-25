@@ -374,12 +374,12 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
             nat_lang_query = f"{join_type} {table_name} with {join_table} on {join_condition}"
             return nat_lang_query, sql_query
 
-    # Handle aggregate functions: SUM, AVG, MAX, COUNT
+   # Handle aggregate functions: SUM, AVG, MAX, COUNT
     aggregate_keywords = {
         "sum": "SUM", "total": "SUM", "average": "AVG", "avg": "AVG",
         "max": "MAX", "count": "COUNT"
     }
-    
+
     for keyword, agg_func in aggregate_keywords.items():
         if keyword in tokens:
             for quant in quantitative_columns:
@@ -391,7 +391,13 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
 
     # Handle "WHERE" conditions
     if "where" in tokens:
+        # Determine if the user wants to filter a specific column
         condition = ' '.join(tokens[tokens.index("where") + 1:])
+        for quant in quantitative_columns:
+            if quant in tokens:
+                sql_query = f"SELECT {quant} FROM {table_name} WHERE {condition}"
+                nat_lang_query = f"Sales data where {condition}"
+                return nat_lang_query, sql_query
         sql_query = f"SELECT * FROM {table_name} WHERE {condition}"
         nat_lang_query = f"Data where {condition}"
         return nat_lang_query, sql_query
