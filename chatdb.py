@@ -433,17 +433,6 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
             sql_query = f"SELECT * FROM {table_name} WHERE {matched_column} {comparison_operator} {comparison_value}"
             nat_lang_query = f"Rows where {matched_column} is {comparison_operator} {comparison_value}"
             return nat_lang_query, sql_query
-    
-    # Step 7: Handle conditional queries (e.g., where quantity > 100)
-    if "where" in tokens:
-        condition_index = tokens.index("where") + 1
-        condition = ' '.join(tokens[condition_index:])
-        for quant in quantitative_columns:
-            if quant in tokens:
-                sql_query = f"SELECT {quant} FROM {table_name} WHERE {condition}"
-                nat_lang_query = f"{quant} where {condition}"
-                print(f"Generated query: {sql_query}")
-                return nat_lang_query, sql_query
 
     # Fallback in case no match is found
     return "Query could not be interpreted. Please try rephrasing.", ""
