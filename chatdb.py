@@ -361,7 +361,6 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
     join_type = next((kw for kw in join_keywords if kw in tokens), None)
 
     if join_type:
-        # Extract tables and join conditions
         if "on" in tokens:
             join_table_idx = tokens.index(join_type) + 1
             on_idx = tokens.index("on")
@@ -374,8 +373,8 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
             sql_query = f"SELECT * FROM {table_name} {join_type} {join_table} ON {join_condition}"
             nat_lang_query = f"{join_type} {table_name} with {join_table} on {join_condition}"
             return nat_lang_query, sql_query
-    
-   # Handle aggregate functions: SUM, AVG, MAX, COUNT
+
+    # Handle aggregate functions: SUM, AVG, MAX, COUNT
     aggregate_keywords = {
         "sum": "SUM", "total": "SUM", "average": "AVG", "avg": "AVG",
         "max": "MAX", "count": "COUNT"
@@ -390,9 +389,9 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
                         nat_lang_query = f"{agg_func} {quant} by {cat}"
                         return nat_lang_query, sql_query
 
-    # Handle "WHERE" conditions with multiple tokens
+    # Handle "WHERE" conditions
     if "where" in tokens:
-        condition = ' '.join(tokens[tokens.index("where")+1:])
+        condition = ' '.join(tokens[tokens.index("where") + 1:])
         sql_query = f"SELECT * FROM {table_name} WHERE {condition}"
         nat_lang_query = f"Data where {condition}"
         return nat_lang_query, sql_query
@@ -400,11 +399,9 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
     # Handle "TOP N" queries
     if "top" in tokens and "by" in tokens:
         try:
-            # Extract N dynamically from the input
             n_index = tokens.index("top") + 1
             n_value = int(tokens[n_index])  # Assume the next token is the value of N
-            
-            # Identify relevant columns
+
             for quant in quantitative_columns:
                 for cat in categorical_columns:
                     if quant in tokens and cat in tokens:
@@ -414,70 +411,14 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
         except (IndexError, ValueError):
             return "Please specify a valid number after 'top'.", None
 
-
-    # 7. Complex queries with multiple conditions (WHERE + AND)
-    if "where" in tokens and "and" in tokens:
-        conditions = ' AND '.join(tokens[tokens.index("where")+1:])
-        sql_query = f"SELECT * FROM {table_name} WHERE {conditions}"
-        nat_lang_query = f"Data where {conditions}"
-        return nat_lang_query, sql_query
-
-    # 8. Grouped and filtered queries (e.g., Group by category and filter by price)
-    if "group" in tokens and "by" in tokens and "where" in tokens:
-        group_column = [col for col in categorical_columns if col.lower() in tokens]
-        condition_column = [col for col in quantitative_columns if col.lower() in tokens]
+    # Handle grouped queries with conditions
+    if "group" in tokens and "by" in tokens:
+        group_column = next((col for col in categorical_columns if col.lower() in tokens), None)
+        condition_column = next((col for col in quantitative_columns if col.lower() in tokens), None)
         if group_column and condition_column:
-            condition = ' '.join(tokens[tokens.index("where")+1:])
-            sql_query = f"SELECT {', '.join(group_column)}, SUM({condition_column[0]}) as total_{condition_column[0]} FROM {table_name} WHERE {condition} GROUP BY {', '.join(group_column)}"
-            nat_lang_query = f"Total {condition_column[0]} by {', '.join(group_column)} where {condition}"
+            sql_query = f"SELECT {group_column}, SUM({condition_column}) as total_{condition_column} FROM {table_name} GROUP BY {group_column}"
+            nat_lang_query = f"Group by {group_column}, total {condition_column}"
             return nat_lang_query, sql_query
-    
-    # 2. Aggregation with JOIN (e.g., SUM, AVG)
-    if "total" in tokens or "sum" in tokens or "average" in tokens or "avg" in tokens:
-        for quant in quantitative_columns:
-            for cat in categorical_columns:
-                if quant in tokens and cat in tokens:
-                    if join_table and join_columns:
-                        join_condition = f"ON {table_name}.{join_columns[0]} = {join_table}.{join_columns[1]}"
-                        sql_query = f"SELECT {cat}, SUM({quant}) as total_{quant} FROM {table_name} {join_type} {join_table} {join_condition} GROUP BY {cat}"
-                        nat_lang_query = f"Total {quant} by {cat} joined with {join_table}"
-                    else:
-                        sql_query = f"SELECT {cat}, SUM({quant}) as total_{quant} FROM {table_name} GROUP BY {cat}"
-                        nat_lang_query = f"Total {quant} by {cat}"
-                    return nat_lang_query, sql_query
-
-    # 3. Filtering with JOIN (e.g., WHERE clause)
-    if "where" in tokens:
-        for quant in quantitative_columns:
-            if quant in tokens:
-                condition = ' '.join(tokens[tokens.index("where")+1:])
-                if join_table and join_columns:
-                    join_condition = f"ON {table_name}.{join_columns[0]} = {join_table}.{join_columns[1]}"
-                    sql_query = f"SELECT {quant}, SUM({quant}) as total_{quant} FROM {table_name} {join_type} {join_table} {join_condition} WHERE {condition}"
-                    nat_lang_query = f"Total {quant} where {condition} joined with {join_table}"
-                else:
-                    sql_query = f"SELECT {quant}, SUM({quant}) as total_{quant} FROM {table_name} WHERE {condition}"
-                    nat_lang_query = f"Total {quant} where {condition}"
-                return nat_lang_query, sql_query
-
-    # 4. JOIN with multiple conditions (AND)
-    if "and" in tokens and "join" in tokens:
-        if join_table and join_columns:
-            join_condition = f"ON {table_name}.{join_columns[0]} = {join_table}.{join_columns[1]}"
-            conditions = ' AND '.join(tokens[tokens.index("where")+1:])
-            sql_query = f"SELECT * FROM {table_name} {join_type} {join_table} {join_condition} WHERE {conditions}"
-            nat_lang_query = f"Join {table_name} with {join_table} on {join_columns[0]} = {join_columns[1]} where {conditions}"
-            return nat_lang_query, sql_query
-
-    # 5. Multiple JOINS (e.g., JOINs between multiple tables)
-    if "join" in tokens and "and" in tokens:
-        join_tables = [join_table]  # Assume multiple join tables
-        # Create JOIN SQL for multiple tables
-        for i in range(len(join_tables)-1):
-            join_condition = f"ON {table_name}.{join_columns[i]} = {join_tables[i+1]}.{join_columns[i+1]}"
-            sql_query += f" {join_type} {join_tables[i+1]} {join_condition}"
-        nat_lang_query = f"Join multiple tables {table_name} and others"
-        return nat_lang_query, sql_query
     
     # If no specific match, return a generic query
     return "Query could not be interpreted. Please try rephrasing.", None
