@@ -484,11 +484,13 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
         
         i += 1
         
-     # Ensure valid query syntax by joining conditions dynamically
-    if conditions:
-        where_clause = " ".join(conditions)
+    if len(conditions) > 1:
+        # if "OR" in conditions:
+        #     where_clause = " OR ".join(conditions)  # Join with OR if explicit OR exists
+        # elif "AND" in conditions:
+        where_clause = " AND ".join(conditions)  # Default to AND
     else:
-        where_clause = ""  # Ensure where_clause is defined
+        where_clause = " ".join(conditions)
 
     # Generate SQL query
     if where_clause:
