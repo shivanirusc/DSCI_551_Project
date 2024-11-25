@@ -328,7 +328,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     st.write(f"categorical_columns extracted: {categorical_columns}")
     st.write(f"quantitative_columns extracted: {quantitative_columns}")
     
-    
+    # Handle sum and total queries
     if "sum" in tokens or "total" in tokens:
         column = map_columns(tokens, quantitative_columns)  # Identify the quantitative column
         group_by_column = map_columns(tokens, categorical_columns)  # Identify the categorical column
@@ -342,10 +342,11 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     # Step 4: Handle 'count' queries
     if "count" in tokens:
         for cat in categorical_columns:
-            if cat in tokens:
+            # Check for exact or partial matches in tokens
+            if any(token in cat.lower() for token in tokens):
                 sql_query = f"SELECT {cat}, COUNT(*) as count_{cat} FROM {table_name} GROUP BY {cat}"
                 nat_lang_query = f"Count of {cat}"
-                print(f"Generated query: {sql_query}")
+                st.write(f"Generated query: {sql_query}")
                 return nat_lang_query, sql_query
 
     # Step 5: Handle 'average' or 'avg' queries
