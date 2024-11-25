@@ -369,9 +369,24 @@ if data is not None:
     query = ""
     nat_lang_query = ""
     query = ""
+    
     if user_input and uploaded_columns and ("example" in user_input or "sample" in user_input):
         if filetype == "csv":
-            print(None)
+            # Generates example sql queries if user enters "example sql query" into query box
+            if user_input.lower() == "example sql query":
+                
+                nat_lang_query, query = generate_sample_queries(table_name, data) # Generate sample queries
+
+            # Generates example sql queries for a specified language construct if user enters "example sql query with ____"
+            elif "example sql query with" in user_input.lower():
+                # Extract the construct from the user input
+                construct = user_input.lower().replace("example sql query with", "").strip() 
+                nat_lang_query, query = generate_construct_queries(construct, table_name, data) # Generate queries based on the specified construct
+
+                # Error checking if user doesn't enter a valid construct
+                if query == 0:
+                    st.write("Please specify a construct among the following: 'group by', 'where', 'having', 'order by', 'aggregation'" )
+                    
         elif filetype == "json":
             if user_input.lower() == "example mongodb queries" or user_input.lower() =="sample mongodb queries":
                 res_many = get_sample_mongo_gen(categorical, numeric, unique, range_vals, collection_name)
@@ -542,24 +557,7 @@ if data is not None:
                     st.error("No results generated for this query.")
     elif user_input and uploaded_columns:
         if filetype == "csv":
-
-            # Generates example sql queries if user enters "example sql query" into query box
-            if user_input.lower() == "example sql query":
-                
-                nat_lang_query, query = generate_sample_queries(table_name, data) # Generate sample queries
-
-            # Generates example sql queries for a specified language construct if user enters "example sql query with ____"
-            elif "example sql query with" in user_input.lower():
-                # Extract the construct from the user input
-                construct = user_input.lower().replace("example sql query with", "").strip() 
-                nat_lang_query, query = generate_construct_queries(construct, table_name, data) # Generate queries based on the specified construct
-
-                # Error checking if user doesn't enter a valid construct
-                if query == 0:
-                    st.write("Please specify a construct among the following: 'group by', 'where', 'having', 'order by', 'aggregation'" )
-
-            else:
-                nat_lang_query, query = generate_sql_query(user_input, uploaded_columns, table_name, data)
+            nat_lang_query, query = generate_sql_query(user_input, uploaded_columns, table_name, data)
         else:
             res = get_mongo_queries_nat(tokens, categorical, numeric, unique, range_vals, collection_name)
             if res:
