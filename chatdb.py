@@ -238,29 +238,29 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
         return nat_lang_query, sql_query
    
     if "(" in tokens or ")" in tokens:
-    # Support for nested conditions
-    nested_conditions = []
-    temp_condition = []
-    i = 0
-    while i < len(tokens):
-        token = tokens[i]
+        # Support for nested conditions
+        nested_conditions = []
+        temp_condition = []
+        i = 0
+        while i < len(tokens):
+                token = tokens[i]
         
-        if token == "(":
-            # Start a nested condition
-            if temp_condition:
-                nested_conditions.append(" ".join(temp_condition))
-                temp_condition = []
-            nested_conditions.append("(")
-        elif token == ")":
-            # Close a nested condition
-            if temp_condition:
-                nested_conditions.append(" ".join(temp_condition))
-                temp_condition = []
-            nested_conditions.append(")")
-        else:
-            temp_condition.append(token)
+                if token == "(":
+                    # Start a nested condition
+                    if temp_condition:
+                        nested_conditions.append(" ".join(temp_condition))
+                        temp_condition = []
+                    nested_conditions.append("(")
+                elif token == ")":
+                    # Close a nested condition
+                    if temp_condition:
+                        nested_conditions.append(" ".join(temp_condition))
+                        temp_condition = []
+                    nested_conditions.append(")")
+                else:
+                    temp_condition.append(token)
         
-        i += 1
+                i += 1
 
     # Join the nested conditions into a WHERE clause
     where_clause = " ".join(nested_conditions)
