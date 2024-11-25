@@ -111,7 +111,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
         # Match tokens to quantitative columns
         for quant in quantitative_columns:
             if any(token in quant.lower() for token in tokens):
-                quant_col = quant
+                quant_col = quant 
                 break
 
         # Match tokens to categorical columns
