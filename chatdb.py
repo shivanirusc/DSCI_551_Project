@@ -480,9 +480,10 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
         elif token in conjunctions:
             if conditions and token.lower() in conjunctions:
                 conditions.append(token.upper())
+                st.write(f"{token.upper()}")
         
         i += 1
-
+        
      # Ensure valid query syntax by joining conditions dynamically
     if conditions:
         where_clause = " ".join(conditions)
