@@ -10,6 +10,7 @@ import ssl
 import random
 from tabulate import tabulate
 import json
+import numpy as np
 
 # some learning notes as I have been going:
 # don't cover cases where an attribute is a list or dict. These could be queries all on their own. This could be something we add for 
@@ -40,7 +41,7 @@ def download_nltk_resources():
 def basic_tokenizer(text):
     return text.lower().split()
 
-def process_input(user_input):
+def process_input_mongo(user_input):
     # Step 1: Tokenize using basic_tokenizer
     tokens = basic_tokenizer(user_input)
     
@@ -122,10 +123,6 @@ def infer_types(df_):
                 unique_cols.append(col)
             else:
                 categorical_cols.append(col)
-    # print("NUMERIC COLS", numeric_cols)
-    # print("CATEGORICAL COLS", categorical_cols)
-    # print("NESTED COLS", nested_cols)
-    # print("UNIQUE COLS", unique_cols)
     return numeric_cols, categorical_cols, nested_cols, unique_cols, df_
 
 def get_quant_range(df_, quant_cols):
@@ -165,6 +162,7 @@ def get_mongo_queries_nat(tokens, cat_cols, quant_cols, unique_cols, range_, col
     quant_chosen = list(set(token.lower() for token in tokens) & set(col.lower() for col in quant_cols))
     unique_chosen = list(set(token.lower() for token in tokens) & set(col.lower() for col in unique_cols))
     extracted_numbers = []
+    result = []
     for token in tokens:
         try:
             # Try to convert the token to a number
@@ -197,19 +195,7 @@ def get_mongo_queries_nat(tokens, cat_cols, quant_cols, unique_cols, range_, col
     # do a greater than or less than case
     else:
         print("We couldn't find a query matching your request, please try another and make sure you use the correct column names in your queries")
-        query_made = False
     return result
-        # data = list(result[0])
-        # headers = list(data[0].keys())[::-1] if data else []
-        # # Ensure rows are aligned with reversed headers
-        # rows = [[row[h] for h in headers] for row in data]
-        # print(result[2])
-        # print(result[1])
-        # if data != []:
-        #     print("Below is the result of the query:")
-        #     print(tabulate(rows, headers=headers, tablefmt="grid"))
-        # else:
-        #     print("Nothing was returned from your query!!")
 
 # get general sample queries
 def get_sample_mongo_gen(cat_cols, quant_cols, unique_cols, range_, collectionName):
@@ -220,8 +206,9 @@ def get_sample_mongo_gen(cat_cols, quant_cols, unique_cols, range_, collectionNa
     all_queries['Counts'] = gen_counts_query(cat_cols, collectionName)
     all_queries['Greater_group'] = gen_gtlt_query_group(cat_cols, quant_cols, range_, 'gt', collectionName)
     all_queries['Less_group'] = gen_gtlt_query_group(cat_cols, quant_cols, range_, 'lt', collectionName)
-    all_queries['Greater_unique'] = gen_gtlt_query_unique(unique_cols, quant_cols, range_, 'gt', collectionName)
-    all_queries['Less_unique'] = gen_gtlt_query_unique(unique_cols, quant_cols, range_, 'lt', collectionName)
+    if unique_cols:
+        all_queries['Greater_unique'] = gen_gtlt_query_unique(unique_cols, quant_cols, range_, 'gt', collectionName)
+        all_queries['Less_unique'] = gen_gtlt_query_unique(unique_cols, quant_cols, range_, 'lt', collectionName)
 
     # Use list() to convert dictionary items into a sequence
     selected_pairs = random.sample(list(all_queries.items()), 3)
@@ -229,17 +216,7 @@ def get_sample_mongo_gen(cat_cols, quant_cols, unique_cols, range_, collectionNa
     # Convert back to dictionary if needed
     selected_dict = dict(selected_pairs)
 
-    # print("Here are some example queries for the collection:", collectionName)
     return selected_dict
-    # for key, value in selected_dict.items():
-    #     data = list(value[0])
-    #     headers = list(data[0].keys())[::-1] if data else []
-    #     # Ensure rows are aligned with reversed headers
-    #     rows = [[row[h] for h in headers] for row in data]
-    #     print(value[2])
-    #     print(value[1])
-    #     print("Below is the result of the query:")
-    #     print(tabulate(rows, headers=headers, tablefmt="grid"))
 
 # get specific sample queries (ie group by)
 def get_sample_mongo_specific(tokens, cat_cols, quant_cols, unique_cols, range_, collectionName):
@@ -427,9 +404,9 @@ def gen_gtlt_query_unique(unique_cols, quant_cols, range_, ineq, collectionName,
 
 # setup
 # download_nltk_resources()
-# filename = "pokedex.json"
+# filename = "used_car.json"
 # df = pd.read_json(f'data/{filename}')
-# # preprocessing
+# # # preprocessing
 # numeric, categorical, nested, unique, df_updated = infer_types(df)
 # print("NUMERIC BASE FILE", numeric)
 # print("NUMERIC", numeric)
@@ -438,7 +415,7 @@ def gen_gtlt_query_unique(unique_cols, quant_cols, range_, ineq, collectionName,
 # range_vals = get_quant_range(df, numeric)
 # collection_name = store_in_mongodb(df_updated, filename)
 
-# TEST REQ 1: GET EXAMPLE QUERIES USING TEMPLATE
+# # TEST REQ 1: GET EXAMPLE QUERIES USING TEMPLATE
 # get_sample_mongo_gen(categorical, numeric, unique, range_vals, collection_name)
 
 # TEST REQ 2: GET EXAMPLE QUERY(S) USING TEMPLATE WITH SPECIFIC LANGUAGE CONSTRUCTS
