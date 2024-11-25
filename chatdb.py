@@ -340,7 +340,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
             nat_lang_query = f"Sum of {column} grouped by {group_by_column}"
             return nat_lang_query, sql_query
     
-    # Step 4: Handle 'count' queries
+    # Handle 'count' queries
     if "count" in tokens or "many" in tokens:  # Include synonyms like "many"
      for cat in categorical_columns:
          # Check for exact or partial matches
@@ -349,15 +349,28 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
              nat_lang_query = f"Count of {cat}"
              return nat_lang_query, sql_query
     
-    # Step 5: Handle 'average' or 'avg' queries
+    # Handle 'average' or 'avg' queries
     if any(word in tokens for word in ["average", "avg"]):
-        for quant in quantitative_columns:
-            for cat in categorical_columns:
-                if quant in tokens and cat in tokens:
-                    sql_query = f"SELECT {cat}, AVG({quant}) as average_{quant} FROM {table_name} GROUP BY {cat}"
-                    nat_lang_query = f"Average {quant} by {cat}"
-                    print(f"Generated query: {sql_query}")
-                    return nat_lang_query, sql_query
+    quant_col = None
+    cat_col = None
+    
+    # Match quantitative and categorical columns
+    for quant in quantitative_columns:
+        if quant in tokens:
+            quant_col = quant
+            break  # Exit loop once a match is found
+    
+    for cat in categorical_columns:
+        if cat in tokens:
+            cat_col = cat
+            break  # Exit loop once a match is found
+    
+    # Generate SQL query if both columns are matched
+    if quant_col and cat_col:
+        sql_query = f"SELECT {cat_col}, AVG({quant_col}) as average_{quant_col} FROM {table_name} GROUP BY {cat_col}"
+        nat_lang_query = f"Average {quant_col} by {cat_col}"
+        print(f"Generated query: {sql_query}")
+        return nat_lang_query, sql_query
 
     # Step 6: Handle 'maximum' or 'max' queries
     if any(word in tokens for word in ["maximum", "max"]):
