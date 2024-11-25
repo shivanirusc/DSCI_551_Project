@@ -316,6 +316,7 @@ def categorize_columns(dataframe):
     categorical = [col for col in dataframe.columns if dataframe[col].dtype == 'object']
     quantitative = [col for col in dataframe.columns if dataframe[col].dtype in ['int64', 'float64']]
     return categorical, quantitative
+
 def generate_sql_query(user_input, uploaded_columns, table_name, data):
     # Step 1: Process the input query using NLP processing (basic tokenization and stemming)
     tokens = process_input(user_input)
@@ -329,13 +330,14 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     
     
     if "sum" in tokens or "total" in tokens:
-    column = map_columns(tokens, quantitative_columns)  # Identify the quantitative column
-    group_by_column = map_columns(tokens, categorical_columns)  # Identify the categorical column
-    
-    if column and group_by_column:  # Both columns must exist
-        sql_query = f"SELECT {group_by_column}, SUM({column}) as total_{column} FROM {table_name} GROUP BY {group_by_column}"
-        nat_lang_query = f"Sum of {column} grouped by {group_by_column}"
-        return nat_lang_query, sql_query
+        column = map_columns(tokens, quantitative_columns)  # Identify the quantitative column
+        group_by_column = map_columns(tokens, categorical_columns)  # Identify the categorical column
+
+        if column and group_by_column:  # Ensure both column mappings exist
+            sql_query = f"SELECT {group_by_column}, SUM({column}) as total_{column} FROM {table_name} GROUP BY {group_by_column}"
+            nat_lang_query = f"Sum of {column} grouped by {group_by_column}"
+            st.write(f"Generated query: {sql_query}")
+            return nat_lang_query, sql_query
     
     # Step 4: Handle 'count' queries
     if "count" in tokens:
