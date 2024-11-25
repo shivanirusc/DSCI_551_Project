@@ -9,6 +9,8 @@ from nltk.stem import WordNetLemmatizer
 import os
 from streamlit_extras.stylable_container import stylable_container
 import textwrap as tw
+import numpy as np
+from tabulate import tabulate
 
 from sql_sample_queries import categorize_columns, generate_sample_queries, generate_construct_queries
 from mongo_queries import get_quant_range, infer_types, get_sample_mongo_specific, get_sample_mongo_gen, get_mongo_queries_nat
@@ -75,8 +77,8 @@ def process_input(user_input):
     tokens = basic_tokenizer(user_input)
     
     # Step 2: Remove stopwords using NLTK stopwords
-    stop_words = set(stopwords.words("english"))
-    tokens = [token for token in tokens if token not in stop_words]
+    # stop_words = set(stopwords.words("english"))
+    # tokens = [token for token in tokens if token not in stop_words]
     
     # Step 3: Lemmatize using NLTK WordNetLemmatizer
     lemmatizer = WordNetLemmatizer()
@@ -178,9 +180,11 @@ if file:
         else:
             data = pd.read_json(file)
             numeric, categorical, nested, unique, data = infer_types(data)
+            data = data.replace("null", np.nan)
             range_vals = get_quant_range(data, numeric)
             uploaded_columns = numeric
             collection_name = store_in_mongodb(data, filename)
+            print(collection_name)
 
         st.markdown(f"**Uploaded Successfully!**  \n\nQuantitative columns in your data: {numeric}  \n\nCategorical columns in your data: {categorical} \n\nUnique columns in your data: {unique}")
     else:
@@ -227,6 +231,7 @@ if user_input and uploaded_columns:
     # mongo db case
     if filename.endswith('.json'):
         # Execute the query on MongoDB database
+        print("Getting this collection name: ", collection_name)
         collection = mongo_db[collection_name]
         tokens = process_input(user_input)
         example_with_spec_terms = ['aggregate', 'group', 'find', 'where', 'retrieve']
@@ -234,25 +239,30 @@ if user_input and uploaded_columns:
         example_general = ["example", "sample"]
         example_nat_lang = ["sum", "total", "average", "mean", "greater", "more", "than", "above", "less", "fewer", "below", "count", "number", "counts"]
         result = []
+        query_gen = False
+        query_spec = False
         # general example
         if set(tokens).isdisjoint(example_with_spec+example_nat_lang):
             result = get_sample_mongo_gen(categorical, numeric, unique, range_vals, collection_name)
+            print(result)
+            query_gen = True
         # specific general
         elif set(example_with_spec_terms) & set(tokens):
             result = get_sample_mongo_specific(tokens, categorical, numeric, unique, range_vals, collection_name)
+            query_spec = True
         # nat language example
         elif set(tokens) & set(example_nat_lang):
             result = get_mongo_queries_nat(tokens, categorical, numeric, unique, range_vals, collection_name)
+            query_spec = True
         if result:
-            if isinstance(result, dict):
+            if query_gen:
+                print("QUERY GEN")
                 for key, value in result.items():
-                    data = list(value[0])
-                    natural_lang = value[2]
+                    cursor = value[0]
                     query_code = value[1]
+                    nat_query = value[2]
                     type_ = value[3]
-                    type_ = type_.capitalize()
-                    st.write(f"**{type_}:**\n\n {natural_lang}")
-                    # https://discuss.streamlit.io/t/st-code-on-multiple-lines/50511/9
+                    st.write(f"**{type_}:**\n\n {nat_query}")
                     with stylable_container(
                         "codeblock",
                         """
@@ -264,12 +274,14 @@ if user_input and uploaded_columns:
                         st.code(
                             query_code
                         )
-                    result_df = pd.DataFrame(data)
+                    data = list(cursor)
+                    print(data)
+                    df = pd.DataFrame(data)
                     st.write("**Query Result from MongoDB:**")
-                    st.dataframe(result_df)
-               # do dict stuff
+                    st.dataframe(df)  # Streamlit will automatically render a scrollable, interactive table
             else:
                 data = list(result[0])
+                print("QUERY SPECIFIC")
                 query_code = result[1]
                 nat_query = result[2]
                 type_ = result[3]
