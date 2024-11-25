@@ -423,7 +423,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
             comparison_operator = "!="
 
         # Extract the value for comparison
-        for token in normalized_tokens:
+        for token in tokens:
             if token.isdigit():
                 comparison_value = token
                 break  # Exit loop once a number is found
