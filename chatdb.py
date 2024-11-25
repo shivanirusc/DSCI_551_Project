@@ -311,27 +311,17 @@ def categorize_columns(dataframe):
     return categorical, quantitative
 
 def extract_join_info(user_input, uploaded_columns):
-    """
-    Extract join table and join condition from user input.
-    
-    Args:
-    - user_input (str): User's SQL-like query input.
-    - uploaded_columns (list): List of column names from the dataset to help in extraction.
-    
-    Returns:
-    - join_table (str): The table name to be joined.
-    - join_columns (tuple): A tuple of column names involved in the join condition.
-    """
-    # Regex pattern to match a basic SQL JOIN structure: 'JOIN <table> ON <column1> = <column2>'
-    join_pattern = r"JOIN\s+(\w+)\s+ON\s+(\w+\.\w+)\s*=\s*(\w+\.\w+)"
+    # Regex pattern to match different JOIN types: 'JOIN <table> ON <column1> = <column2>'
+    join_pattern = r"(INNER|LEFT|RIGHT)\s+JOIN\s+(\w+)\s+ON\s+(\w+\.\w+)\s*=\s*(\w+\.\w+)"
     
     match = re.search(join_pattern, user_input, re.IGNORECASE)
     if match:
-        join_table = match.group(1)  # Table to join
-        join_columns = (match.group(2), match.group(3))  # Columns for the join condition
-        return join_table, join_columns
+        join_type = match.group(1).upper()  # Get JOIN type (INNER, LEFT, RIGHT)
+        join_table = match.group(2)         # Table to join
+        join_columns = (match.group(3), match.group(4))  # Columns for the join condition
+        return join_type, join_table, join_columns
     else:
-        return None, None
+        return None, None, None
 
 # Function to generate SQL queries based on user input
 def generate_sql_query(user_input, column_names, table_name, dataframe):
@@ -511,14 +501,16 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
             nat_lang_query = f"Total {condition_column[0]} by {', '.join(group_column)} where {condition}"
             return nat_lang_query, sql_query
     
-    # Initialize join_table and join_columns
-    join_table, join_columns = extract_join_info(user_input, uploaded_columns)
+    # Initialize join_type, join_table, and join_columns
+    join_type, join_table, join_columns = extract_join_info(user_input, uploaded_columns)
     
     # Construct the SQL query based on extracted information
-    if join_table and join_columns:
-        sql_query = f"SELECT * FROM {table_name} INNER JOIN {join_table} ON {join_columns[0]} = {join_columns[1]}"
+    if join_type and join_table and join_columns:
+        sql_query = f"SELECT * FROM {table_name} {join_type} JOIN {join_table} ON {join_columns[0]} = {join_columns[1]}"
+        return user_input, sql_query
     else:
         sql_query = f"SELECT * FROM {table_name}"
+        return user_input, sql_query
 
     # 2. Aggregation with JOIN (e.g., SUM, AVG)
     if "total" in tokens or "sum" in tokens or "average" in tokens or "avg" in tokens:
