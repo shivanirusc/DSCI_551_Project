@@ -311,17 +311,36 @@ def categorize_columns(dataframe):
     return categorical, quantitative
 
 def extract_join_info(user_input, uploaded_columns):
-    # Regex pattern to match different JOIN types: 'JOIN <table> ON <column1> = <column2>'
-    join_pattern = r"(INNER|LEFT|RIGHT)\s+JOIN\s+(\w+)\s+ON\s+(\w+\.\w+)\s*=\s*(\w+\.\w+)"
+    # Define possible join types
+    join_types = ["INNER", "LEFT", "RIGHT"]
     
-    match = re.search(join_pattern, user_input, re.IGNORECASE)
-    if match:
-        join_type = match.group(1).upper()  # Get JOIN type (INNER, LEFT, RIGHT)
-        join_table = match.group(2)         # Table to join
-        join_columns = (match.group(3), match.group(4))  # Columns for the join condition
-        return join_type, join_table, join_columns
+    # Initialize join information
+    join_type = None
+    join_table = None
+    join_columns = None
+    
+    # Detect join type (e.g., INNER, LEFT, RIGHT)
+    for jt in join_types:
+        if jt in user_input.upper():
+            join_type = jt
+            break  # stop once we find the join type
+    
+    # Extract the tables involved in the join (e.g., "product_data", "category_data")
+    table_match = re.search(r'(\w+)\s+with\s+(\w+)', user_input)
+    if table_match:
+        # The first table in the main SELECT statement is assumed to be the base table
+        table_name = table_match.group(1)
+        join_table = table_match.group(2)
     else:
-        return None, None, None
+        # Default case if no join tables are explicitly mentioned
+        table_name = "product_data"  # Assuming default base table if not provided
+    
+    # Extract the column names for the join condition (e.g., "product_data.category = category_data.category")
+    join_condition_match = re.search(r"on\s+(\w+\.\w+)\s*=\s*(\w+\.\w+)", user_input)
+    if join_condition_match:
+        join_columns = (join_condition_match.group(1), join_condition_match.group(2))
+    
+    return join_type, table_name, join_table, join_columns
 
 # Function to generate SQL queries based on user input
 def generate_sql_query(user_input, column_names, table_name, dataframe):
