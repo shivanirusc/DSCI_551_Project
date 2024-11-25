@@ -470,7 +470,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
         if matched_column:
             operator = None
             if i + 1 < len(tokens) and tokens[i + 1] in operators:
-                operator = operators[tokens1[i + 1]]
+                operator = operators[tokens[i + 1]]
                 i += 1  # Move to operator token
             
             if operator and operator != "BETWEEN":
