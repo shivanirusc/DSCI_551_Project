@@ -384,59 +384,91 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
     #                 nat_lang_query = f"Top {n_value} {cat} by {quant}"
     #                 return nat_lang_query, sql_query
     # Example query pattern: "total <A> by <B>"
-        # 1. Total (SUM) queries
-    if "total" in tokens or "sum" in tokens:
-        for quant in quantitative_columns:
-            for cat in categorical_columns:
-                if quant in tokens and cat in tokens:
-                    sql_query = f"SELECT {cat}, SUM({quant}) as total_{quant} FROM {table_name} GROUP BY {cat}"
-                    nat_lang_query = f"Total {quant} by {cat}"
-                    return nat_lang_query, sql_query
+   # Handle aggregate functions: SUM, AVG, MAX, COUNT
+    aggregate_keywords = {
+        "sum": "SUM", "total": "SUM", "average": "AVG", "avg": "AVG",
+        "max": "MAX", "count": "COUNT"
+    }
 
-    # 2. Average (AVG) queries
-    if "average" in tokens or "avg" in tokens:
-        for quant in quantitative_columns:
-            for cat in categorical_columns:
-                if quant in tokens and cat in tokens:
-                    sql_query = f"SELECT {cat}, AVG({quant}) as average_{quant} FROM {table_name} GROUP BY {cat}"
-                    nat_lang_query = f"Average {quant} by {cat}"
-                    return nat_lang_query, sql_query
+    for keyword, agg_func in aggregate_keywords.items():
+        if keyword in tokens:
+            for quant in quantitative_columns:
+                for cat in categorical_columns:
+                    if quant in tokens and cat in tokens:
+                        sql_query = f"SELECT {cat}, {agg_func}({quant}) as {agg_func.lower()}_{quant} FROM {table_name} GROUP BY {cat}"
+                        nat_lang_query = f"{agg_func} {quant} by {cat}"
+                        return nat_lang_query, sql_query
 
-    # 3. Maximum (MAX) queries
-    if "maximum" in tokens or "max" in tokens:
-        for quant in quantitative_columns:
-            for cat in categorical_columns:
-                if quant in tokens and cat in tokens:
-                    sql_query = f"SELECT {cat}, MAX({quant}) as max_{quant} FROM {table_name} GROUP BY {cat}"
-                    nat_lang_query = f"Maximum {quant} by {cat}"
-                    return nat_lang_query, sql_query
-
-    # 4. Count queries (COUNT)
-    if "count" in tokens:
-        for cat in categorical_columns:
-            if cat in tokens:
-                sql_query = f"SELECT {cat}, COUNT(*) as count_{cat} FROM {table_name} GROUP BY {cat}"
-                nat_lang_query = f"Count of {cat}"
-                return nat_lang_query, sql_query
-
-    # 5. Conditional Total queries (SUM WHERE)
+    # Handle "WHERE" conditions with multiple tokens
     if "where" in tokens:
-        for quant in quantitative_columns:
-            if quant in tokens:
-                condition = ' '.join(tokens[tokens.index("where")+1:])
-                sql_query = f"SELECT SUM({quant}) as total_{quant} FROM {table_name} WHERE {condition}"
-                nat_lang_query = f"Total {quant} where {condition}"
-                return nat_lang_query, sql_query
+        condition = ' '.join(tokens[tokens.index("where")+1:])
+        sql_query = f"SELECT * FROM {table_name} WHERE {condition}"
+        nat_lang_query = f"Data where {condition}"
+        return nat_lang_query, sql_query
 
-    # 6. Top N queries (e.g., "Top N sales by category")
+    # Handle "TOP N" queries
     if "top" in tokens and "by" in tokens:
         for quant in quantitative_columns:
             for cat in categorical_columns:
                 if quant in tokens and cat in tokens:
-                    n_value = 5  # Default top 5, can be modified to extract from user input
+                    n_value = 5  # Default to top 5; you can extract this dynamically from the input
                     sql_query = f"SELECT {cat}, SUM({quant}) as total_{quant} FROM {table_name} GROUP BY {cat} ORDER BY total_{quant} DESC LIMIT {n_value}"
                     nat_lang_query = f"Top {n_value} {cat} by {quant}"
-                    return nat_lang_query, sql_query 
+                    return nat_lang_query, sql_query
+    
+    # 1. Total (SUM) queries
+    # if "total" in tokens or "sum" in tokens:
+    #     for quant in quantitative_columns:
+    #         for cat in categorical_columns:
+    #             if quant in tokens and cat in tokens:
+    #                 sql_query = f"SELECT {cat}, SUM({quant}) as total_{quant} FROM {table_name} GROUP BY {cat}"
+    #                 nat_lang_query = f"Total {quant} by {cat}"
+    #                 return nat_lang_query, sql_query
+
+    # 2. Average (AVG) queries
+    # if "average" in tokens or "avg" in tokens:
+    #     for quant in quantitative_columns:
+    #         for cat in categorical_columns:
+    #             if quant in tokens and cat in tokens:
+    #                 sql_query = f"SELECT {cat}, AVG({quant}) as average_{quant} FROM {table_name} GROUP BY {cat}"
+    #                 nat_lang_query = f"Average {quant} by {cat}"
+    #                 return nat_lang_query, sql_query
+
+    # # 3. Maximum (MAX) queries
+    # if "maximum" in tokens or "max" in tokens:
+    #     for quant in quantitative_columns:
+    #         for cat in categorical_columns:
+    #             if quant in tokens and cat in tokens:
+    #                 sql_query = f"SELECT {cat}, MAX({quant}) as max_{quant} FROM {table_name} GROUP BY {cat}"
+    #                 nat_lang_query = f"Maximum {quant} by {cat}"
+    #                 return nat_lang_query, sql_query
+
+    # 4. Count queries (COUNT)
+    # if "count" in tokens:
+    #     for cat in categorical_columns:
+    #         if cat in tokens:
+    #             sql_query = f"SELECT {cat}, COUNT(*) as count_{cat} FROM {table_name} GROUP BY {cat}"
+    #             nat_lang_query = f"Count of {cat}"
+    #             return nat_lang_query, sql_query
+
+    # 5. Conditional Total queries (SUM WHERE)
+    # if "where" in tokens:
+    #     for quant in quantitative_columns:
+    #         if quant in tokens:
+    #             condition = ' '.join(tokens[tokens.index("where")+1:])
+    #             sql_query = f"SELECT SUM({quant}) as total_{quant} FROM {table_name} WHERE {condition}"
+    #             nat_lang_query = f"Total {quant} where {condition}"
+    #             return nat_lang_query, sql_query
+
+    # # 6. Top N queries (e.g., "Top N sales by category")
+    # if "top" in tokens and "by" in tokens:
+    #     for quant in quantitative_columns:
+    #         for cat in categorical_columns:
+    #             if quant in tokens and cat in tokens:
+    #                 n_value = 5  # Default top 5, can be modified to extract from user input
+    #                 sql_query = f"SELECT {cat}, SUM({quant}) as total_{quant} FROM {table_name} GROUP BY {cat} ORDER BY total_{quant} DESC LIMIT {n_value}"
+    #                 nat_lang_query = f"Top {n_value} {cat} by {quant}"
+    #                 return nat_lang_query, sql_query 
 
     # 7. Complex queries with multiple conditions (WHERE + AND)
     if "where" in tokens and "and" in tokens:
