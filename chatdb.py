@@ -253,7 +253,6 @@ def download_nltk_resources():
         nltk.download('punkt')  # Required for tokenization
         nltk.download('stopwords')  # For stopword removal
         nltk.download('wordnet')  # For lemmatization
-        st.write("NLTK resources downloaded successfully.")
     except Exception as e:
         st.write(f"Error downloading NLTK resources: {e}")
 
@@ -313,22 +312,22 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     # Step 1: Process the input query using NLP processing (basic tokenization and stemming)
     tokens = process_input(user_input)
     
-    print(f"Tokens extracted: {tokens}")
+    st.write(f"Tokens extracted: {tokens}")
 
     # Step 2: Categorize columns in the DataFrame (categorical vs. quantitative)
     categorical_columns, quantitative_columns = categorize_columns(data)
 
-    # Step 3: Handle 'total' or 'sum' queries
-    if any(word in tokens for word in ["total", "sum"]):
+    # 1. Sum query with condition: "sum of <A> where <B>"
+    if "sum" in tokens or "total" in tokens:
         for quant in quantitative_columns:
             if quant in tokens:
-                condition = ' '.join(tokens[tokens.index("where")+1:]) if "where" in tokens else ""
-                sql_query = f"SELECT SUM({quant}) as total_{quant} FROM {table_name}"
-                if condition:
-                    sql_query += f" WHERE {condition}"
-                nat_lang_query = f"Total {quant} where {condition}" if condition else f"Total {quant}"
-                print(f"Generated query: {sql_query}")
-                return nat_lang_query, sql_query
+                # Find condition after 'where' if present
+                if "where" in tokens:
+                    condition_index = tokens.index("where") + 1
+                    condition = ' '.join(tokens[condition_index:])
+                    sql_query = f"SELECT SUM({quant}) as total_{quant} FROM {table_name} WHERE {condition}"
+                    nat_lang_query = f"Sum of {quant} where {condition}"
+                    return nat_lang_query, sql_query
 
     # Step 4: Handle 'count' queries
     if "count" in tokens:
