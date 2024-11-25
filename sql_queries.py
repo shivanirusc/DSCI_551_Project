@@ -44,12 +44,14 @@ templates = [
 ]
 
 # Generates sample queries
-def generate_sample_queries(table_name, categorical, quantitative):
+def generate_sample_queries(table_name, dataframe):
+    categorical, quantitative = categorize_columns(dataframe)
+
     if not categorical or not quantitative:
         # Handle cases where the dataset doesn't meet requirements
         return 0
+
     
-    queries = []
     for _ in range(3):  # Generate 3 sample queries
         sql, nl = random.choice(templates)
         column = random.choice(categorical)
@@ -58,9 +60,9 @@ def generate_sample_queries(table_name, categorical, quantitative):
         sql_query = sql.format(column=column, value_column=value_column, table=table_name)
         nl_query = nl.format(column=column, value_column=value_column)
 
-        queries.append((sql_query, nl_query))   
+        
 
-    return queries
+    return nl_query, sql_query
 
 # Query Execution
 def execute_query(query):
@@ -70,7 +72,8 @@ def execute_query(query):
     st.dataframe(result)
 
 # Will generate query for following language constructs: group by, having, order by, aggregation, where
-def generate_construct_queries(construct, table_name, categorical, quantitative):
+def generate_construct_queries(construct, table_name, dataframe):
+    categorical, quantitative = categorize_columns(dataframe)
     if not categorical or not quantitative:
         # Handle cases where the dataset doesn't meet requirements
         return 0
@@ -177,6 +180,5 @@ def generate_construct_queries(construct, table_name, categorical, quantitative)
         sql_query = sql.format(column=column, value_column=value_column, table=table_name)
         nl_query = nl.format(column=column, value_column=value_column, table=table_name)
 
-        queries_with_nl.append((sql_query, nl_query))
     
-    return queries_with_nl
+    return nl_query, sql_query 

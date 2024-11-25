@@ -59,8 +59,11 @@ def process_input(user_input):
     # Step 1: Tokenize using basic_tokenizer
     tokens = basic_tokenizer(user_input)
     
-    # Step 2: Remove stopwords using NLTK stopwords
+    # Load stopwords, excluding important tokens like "average"
     stop_words = set(stopwords.words("english"))
+    stop_words.difference_update(["average", "sum", "total", "max", "min", "count", "greater", "less"])
+    
+    # Step 2: Remove stopwords using NLTK stopwords
     tokens = [token for token in tokens if token not in stop_words]
     
     # Step 3: Lemmatize using NLTK WordNetLemmatizer
