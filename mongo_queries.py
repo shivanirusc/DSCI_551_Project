@@ -151,18 +151,30 @@ def get_quant_range(df_, quant_cols):
 
 # -------------------------------- MONGO MAIN CASES --------------------------------
 # main function of getting mongo queries from any sort of user input
-def get_mongo_queries_nat(tokens, cat_cols, quant_cols, unique_cols, range_, collectionName):
-    query_made = True
+def get_mongo_queries_nat(user_input, tokens, cat_cols, quant_cols, unique_cols, range_, collectionName):
     total_tokens = ["sum", "total"]
     average_tokens = ["average", "mean"]
     greater_tokens = ["greater", "more", "than", "above"]
     less_tokens = ["less", "fewer", "below"]
     count_tokens = ["count", "number", "counts"]
+    order_tokens = ["ascending", "descending", "order", "sort"]
     cat_chosen = list(set(token.lower() for token in tokens) & set(col.lower() for col in cat_cols))
     quant_chosen = list(set(token.lower() for token in tokens) & set(col.lower() for col in quant_cols))
     unique_chosen = list(set(token.lower() for token in tokens) & set(col.lower() for col in unique_cols))
     extracted_numbers = []
     result = []
+    user_input = user_input.lower()  # Normalize case
+    tokens_sort = user_input.split()
+    sort_field_ = ""
+    if "sort" in tokens_sort and "by" in tokens_sort:
+        sort_index = tokens_sort.index("sort")
+        if sort_index + 2 < len(tokens_sort):
+            sort_field_ = tokens_sort[sort_index + 2]
+            if sort_field_ == "total" and  sort_index + 3 < len(tokens_sort):
+                sort_field_ = sort_field_.capitalize() + " " + tokens_sort[sort_index + 3]
+    sort_order_ = "asc"
+    if "descending" in user_input:
+        sort_order_ = "desc"
     for token in tokens:
         try:
             # Try to convert the token to a number
@@ -172,11 +184,17 @@ def get_mongo_queries_nat(tokens, cat_cols, quant_cols, unique_cols, range_, col
             continue
     # total case
     if set(tokens) & set(total_tokens):
-        if len(quant_chosen) > 1 and'total' in quant_chosen:
+        if len(quant_chosen) > 1 and 'total' in quant_chosen:
             quant_chosen.remove('total')
         print(quant_chosen)
         if(cat_chosen and quant_chosen):
-            result = gen_total_query(cat_cols, quant_cols, collectionName, specific_cat=cat_chosen[0], specific_quant=quant_chosen[0])
+            if "sort" in tokens or "order" in tokens:
+                if sort_field_:
+                    result = gen_total_query(cat_cols, quant_cols, collectionName, specific_cat=cat_chosen[0], specific_quant=quant_chosen[0], sort_field=sort_field_, order=sort_order_)
+                else:
+                    result = gen_total_query(cat_cols, quant_cols, collectionName, specific_cat=cat_chosen[0], specific_quant=quant_chosen[0], sort_field=quant_chosen[0], order=sort_order_)
+            else:
+                result = gen_total_query(cat_cols, quant_cols, collectionName, specific_cat=cat_chosen[0], specific_quant=quant_chosen[0])
     elif set(tokens) & set(greater_tokens):
         if(cat_chosen and quant_chosen and extracted_numbers):
             result = gen_gtlt_query_group(cat_cols, quant_cols, range_, "gt", collectionName, specific_cat=cat_chosen[0], specific_quant=quant_chosen[0], ineq_input=extracted_numbers[0])
@@ -252,7 +270,7 @@ def get_sample_mongo_specific(tokens, cat_cols, quant_cols, unique_cols, range_,
 # -------------------------------- MONGO MAIN CASES --------------------------------
 
 # -------------------------------- MONGO HELPER FUNCTIONS --------------------------------
-def gen_total_query(cat_cols, quant_cols, collectionName, specific_cat=None, specific_quant=None):
+def gen_total_query(cat_cols, quant_cols, collectionName, specific_cat=None, specific_quant=None, sort_field=None, order='asc', limit=5):
     """Generates a query in the Total <A> for each <B> Category, where A is a random quantitative variable and B is a 
         random categorical variable, prints this query in natural language and mongo format, and prints the head(5) of the output
 
@@ -265,6 +283,7 @@ def gen_total_query(cat_cols, quant_cols, collectionName, specific_cat=None, spe
     collectionName : str
         Name of the collection we are currently querying on
     """
+    order_val = 1 if order == 'asc' else -1
     random_quant = specific_quant if specific_quant else random.choice(quant_cols)
     random_cat = specific_cat if specific_cat else random.choice(cat_cols)
     random_quant_var = f"Total {random_quant}"
@@ -272,11 +291,14 @@ def gen_total_query(cat_cols, quant_cols, collectionName, specific_cat=None, spe
                                     string.punctuation))
     nat_language = f"Total {random_quant} for each {random_cat} category"
     collection = mongo_db[collectionName]
-    query_result = collection.aggregate([{"$group": {"_id": f"${random_cat}", f"Total {random_quant}": {"$sum": f"${random_quant}"}}}, 
-                                         {"$project": {f"{random_cat}": "$_id", f"Total {random_quant}": 1, "_id": 0}},{"$limit": 5}])
-    query = [{"$group": {"_id": f"${random_cat}", random_quant_var: {"$sum": f"${random_quant}"}}}, 
-                                         {"$project": {f"{random_cat}": "$_id", random_quant_var: 1, "_id": 0}},{"$limit": 5}]
-    query_string = f"collection.aggregate({json.dumps(query)})"
+    pipeline = [{"$group": {"_id": f"${random_cat}", f"Total {random_quant}": {"$sum": f"${random_quant}"}}}, 
+                                         {"$project": {f"{random_cat}": "$_id", f"Total {random_quant}": 1, "_id": 0}}]
+    if sort_field:
+        pipeline.append({"$sort": {sort_field: order_val}})
+    pipeline.append({"$limit": limit})
+    query_result = collection.aggregate(pipeline)
+    query = pipeline
+    query_string = f"collection.aggregate({json.dumps(pipeline)})"
     return [query_result, query_string, nat_language, "Total"]
     
 def gen_average_query(cat_cols, quant_cols, collectionName, specific_cat=None, specific_quant=None):

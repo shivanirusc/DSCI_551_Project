@@ -544,7 +544,7 @@ if data is not None:
         if filetype == "csv":
             nat_lang_query, query = generate_sql_query(user_input, uploaded_columns, table_name, data)
         elif filetype == "json":
-            res = get_mongo_queries_nat(tokens, categorical, numeric, unique, range_vals, collection_name)
+            res = get_mongo_queries_nat(user_input, tokens, categorical, numeric, unique, range_vals, collection_name)
             if res:
                 nat_lang_query = res[2]
                 query = res[1]
