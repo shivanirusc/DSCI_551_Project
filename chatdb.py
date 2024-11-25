@@ -351,26 +351,24 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     
     # Handle 'average' or 'avg' queries
     if any(word in tokens for word in ["average", "avg"]):
-    quant_col = None
-    cat_col = None
+        quant_col = None
+        cat_col = None
     
-    # Match quantitative and categorical columns
-    for quant in quantitative_columns:
-        if quant in tokens:
-            quant_col = quant
-            break  # Exit loop once a match is found
-    
-    for cat in categorical_columns:
-        if cat in tokens:
-            cat_col = cat
-            break  # Exit loop once a match is found
-    
-    # Generate SQL query if both columns are matched
-    if quant_col and cat_col:
-        sql_query = f"SELECT {cat_col}, AVG({quant_col}) as average_{quant_col} FROM {table_name} GROUP BY {cat_col}"
-        nat_lang_query = f"Average {quant_col} by {cat_col}"
-        print(f"Generated query: {sql_query}")
-        return nat_lang_query, sql_query
+        # Match quantitative and categorical columns
+        for quant in quantitative_columns:
+            if quant in tokens:
+                quant_col = quant
+                break  # Exit loop once a match is found
+        
+        for cat in categorical_columns:
+            if cat in tokens:
+                cat_col = cat
+                break  # Exit loop once a match is found
+        # Generate SQL query if both columns are matched
+        if quant_col and cat_col:
+            sql_query = f"SELECT {cat_col}, AVG({quant_col}) as average_{quant_col} FROM {table_name} GROUP BY {cat_col}"
+            nat_lang_query = f"Average {quant_col} by {cat_col}"
+            return nat_lang_query, sql_query
 
     # Step 6: Handle 'maximum' or 'max' queries
     if any(word in tokens for word in ["maximum", "max"]):
