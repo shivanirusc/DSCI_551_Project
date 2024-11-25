@@ -460,13 +460,18 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
 
     # Handle "TOP N" queries
     if "top" in tokens and "by" in tokens:
-        for quant in quantitative_columns:
-            for cat in categorical_columns:
-                if quant in tokens and cat in tokens:
-                    n_value = 5  # Default to top 5; you can extract this dynamically from the input
-                    sql_query = f"SELECT {cat}, SUM({quant}) as total_{quant} FROM {table_name} GROUP BY {cat} ORDER BY total_{quant} DESC LIMIT {n_value}"
-                    nat_lang_query = f"Top {n_value} {cat} by {quant}"
-                    return nat_lang_query, sql_query
+        n_index = tokens.index("top") + 1
+        by_index = tokens.index("by")
+        try:
+            n_value = int(tokens[n_index])  # Extract N value
+            quant_column = next((col for col in quantitative_columns if col in tokens), None)
+            cat_column = next((col for col in categorical_columns if col in tokens), None)
+            if quant_column and cat_column:
+                sql_query = f"SELECT {cat_column}, SUM({quant_column}) as total_{quant_column} FROM {table_name} GROUP BY {cat_column} ORDER BY total_{quant_column} DESC LIMIT {n_value}"
+                nat_lang_query = f"Top {n_value} {cat_column} by {quant_column}"
+                return nat_lang_query, sql_query
+        except ValueError:
+            return "Please specify a valid number for 'top N'.", None
     
     # 1. Total (SUM) queries
     # if "total" in tokens or "sum" in tokens:
