@@ -129,25 +129,42 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
         if quant_col and cat_col:
             sql_query = f"SELECT {cat_col}, MAX({quant_col}) as max_{quant_col} FROM {table_name} GROUP BY {cat_col}"
             nat_lang_query = f"Highest {quant_col} by {cat_col}"
-            print(f"Generated SQL Query: {sql_query}")
+            st.write(f"Generated SQL Query: {sql_query}")
             return nat_lang_query, sql_query
-        
+
     # Handle sum and total queries
     if "sum" in tokens or "total" in tokens:
-        column = map_columns(tokens, quantitative_columns)  # Identify the quantitative column
-        group_by_column = map_columns(tokens, categorical_columns)  # Identify the categorical column
+        column = map_columns(combined_tokens, quantitative_columns)  # Identify the quantitative column
+        group_by_column = map_columns(combined_tokens, categorical_columns)  # Identify the categorical column
         if column and group_by_column:  # Ensure both column mappings exist
             sql_query = f"SELECT {group_by_column}, SUM({column}) as total_{column} FROM {table_name} GROUP BY {group_by_column}"
             nat_lang_query = f"Sum of {column} grouped by {group_by_column}"
             return nat_lang_query, sql_query
-    
+
     # Handle 'count' queries
     if "count" in tokens or "many" in tokens:  # Include synonyms like "many"
-     for cat in categorical_columns:
-         if any(token in cat.lower() for token in tokens):
-             sql_query = f"SELECT {cat}, COUNT(*) as count_{cat} FROM {table_name} GROUP BY {cat}"
-             nat_lang_query = f"Count of {cat}"
-             return nat_lang_query, sql_query
+        for cat in categorical_columns:
+            if any(token in cat.lower() for token in tokens):
+                sql_query = f"SELECT {cat}, COUNT(*) as count_{cat} FROM {table_name} GROUP BY {cat}"
+                nat_lang_query = f"Count of {cat}"
+                return nat_lang_query, sql_query
+        
+    # # Handle sum and total queries
+    # if "sum" in tokens or "total" in tokens:
+    #     column = map_columns(tokens, quantitative_columns)  # Identify the quantitative column
+    #     group_by_column = map_columns(tokens, categorical_columns)  # Identify the categorical column
+    #     if column and group_by_column:  # Ensure both column mappings exist
+    #         sql_query = f"SELECT {group_by_column}, SUM({column}) as total_{column} FROM {table_name} GROUP BY {group_by_column}"
+    #         nat_lang_query = f"Sum of {column} grouped by {group_by_column}"
+    #         return nat_lang_query, sql_query
+    
+    # # Handle 'count' queries
+    # if "count" in tokens or "many" in tokens:  # Include synonyms like "many"
+    #  for cat in categorical_columns:
+    #      if any(token in cat.lower() for token in tokens):
+    #          sql_query = f"SELECT {cat}, COUNT(*) as count_{cat} FROM {table_name} GROUP BY {cat}"
+    #          nat_lang_query = f"Count of {cat}"
+    #          return nat_lang_query, sql_query
     
     # Handle 'average' or 'avg' queries
     if any(word in tokens for word in ["average", "avg"]):
