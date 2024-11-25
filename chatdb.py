@@ -390,7 +390,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
         # Match quantitative column
         matched_column = None
         for quant in quantitative_columns:
-            if any(token in quant.lower() for token in normalized_tokens):
+            if any(token in quant.lower() for token in tokens):
                 matched_column = quant
                 break  # Exit loop once a match is found
         # Generate SQL query if a quantitative column is matched
@@ -408,18 +408,18 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
 
         # Match a quantitative column
         for quant in quantitative_columns:
-            if any(token in quant.lower() for token in normalized_tokens):
+            if any(token in quant.lower() for token in tokens):
                 matched_column = quant
                 break  # Exit loop once a match is found
 
         # Identify comparison operator
-        if "less" in normalized_tokens:
+        if "less" in tokens:
             comparison_operator = "<"
-        elif "greater" in normalized_tokens:
+        elif "greater" in tokens:
             comparison_operator = ">"
-        elif "equal" in normalized_tokens:
+        elif "equal" in tokens:
             comparison_operator = "="
-        elif "not" in normalized_tokens and "equal" in normalized_tokens:
+        elif "not" in tokens and "equal" in tokens:
             comparison_operator = "!="
 
         # Extract the value for comparison
