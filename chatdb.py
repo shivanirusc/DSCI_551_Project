@@ -310,7 +310,6 @@ def categorize_columns(dataframe):
     quantitative = [col for col in dataframe.columns if dataframe[col].dtype in ['int64', 'float64']]
     return categorical, quantitative
 
-# Function to generate SQL queries dynamically based on the input query
 def generate_sql_query(user_input, uploaded_columns, table_name, data):
     # Step 1: Process the input query using NLP processing
     tokens = process_input(user_input)
@@ -318,7 +317,26 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     # Step 2: Categorize columns in the DataFrame
     categorical_columns, quantitative_columns = categorize_columns(data)
 
-    # 1. Average query: "average <A> by <B>"
+    # Handle "total" or "sum" queries with conditions (e.g., "total sales where quantity > 100")
+    if "total" in tokens or "sum" in tokens:
+        for quant in quantitative_columns:
+            if quant in tokens:
+                condition = ' '.join(tokens[tokens.index("where")+1:]) if "where" in tokens else ""
+                sql_query = f"SELECT SUM({quant}) as total_{quant} FROM {table_name}"
+                if condition:
+                    sql_query += f" WHERE {condition}"
+                nat_lang_query = f"Total {quant} where {condition}" if condition else f"Total {quant}"
+                return nat_lang_query, sql_query
+
+    # Handle "count" queries
+    if "count" in tokens or "total" in tokens:
+        for cat in categorical_columns:
+            if cat in tokens:
+                sql_query = f"SELECT {cat}, COUNT(*) as count_{cat} FROM {table_name} GROUP BY {cat}"
+                nat_lang_query = f"Count of {cat}"
+                return nat_lang_query, sql_query
+
+    # Handle "average" or "avg" queries
     if "average" in tokens or "avg" in tokens:
         for quant in quantitative_columns:
             for cat in categorical_columns:
@@ -327,7 +345,7 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
                     nat_lang_query = f"Average {quant} by {cat}"
                     return nat_lang_query, sql_query
 
-    # 2. Maximum query: "maximum <A> by <B>"
+    # Handle "maximum" or "max" queries
     if "maximum" in tokens or "max" in tokens:
         for quant in quantitative_columns:
             for cat in categorical_columns:
@@ -336,35 +354,17 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
                     nat_lang_query = f"Maximum {quant} by {cat}"
                     return nat_lang_query, sql_query
 
-    # 3. Count query: "count of <A> by <B>"
-    if "count" in tokens or "total" in tokens:
-        for cat in categorical_columns:
-            if cat in tokens:
-                sql_query = f"SELECT {cat}, COUNT(*) as count_{cat} FROM {table_name} GROUP BY {cat}"
-                nat_lang_query = f"Count of {cat}"
-                return nat_lang_query, sql_query
-
-    # 4. Total query: "total <A> where <B>"
-    if "where" in tokens:
-        for quant in quantitative_columns:
-            if quant in tokens:
-                condition = ' '.join(tokens[tokens.index("where")+1:])
-                sql_query = f"SELECT SUM({quant}) as total_{quant} FROM {table_name} WHERE {condition}"
-                nat_lang_query = f"Total {quant} where {condition}"
-                return nat_lang_query, sql_query
-
-    # 5. Top N query: "top N <A> by <B>"
+    # Handle "top N" queries (e.g., "top 5 stores by sales")
     if "top" in tokens and "by" in tokens:
         for quant in quantitative_columns:
             for cat in categorical_columns:
                 if quant in tokens and cat in tokens:
-                    n_value = 5  # Default top 5, could be extracted from input if specified
+                    n_value = 5  # Default top N (could be dynamically handled)
                     sql_query = f"SELECT {cat}, SUM({quant}) as total_{quant} FROM {table_name} GROUP BY {cat} ORDER BY total_{quant} DESC LIMIT {n_value}"
                     nat_lang_query = f"Top {n_value} {cat} by {quant}"
                     return nat_lang_query, sql_query
 
     return "Query could not be interpreted. Please try rephrasing.", ""
-
 
 # Streamlit app setup
 st.title("ChatDB: Interactive Query Assistant")
