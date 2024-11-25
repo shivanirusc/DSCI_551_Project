@@ -376,9 +376,23 @@ if data is not None:
         st.subheader("Query Explanation 📝")
         if query:
             if filetype == "csv" and isinstance(query, str):
-                explanation = "This SQL query fetches data from the uploaded table based on the conditions."
+                explanation = "This SQL query performs the following operations:\n\n"
+                if "GROUP BY" in query:
+                    explanation += "- Groups the data by one or more categorical columns.\n"
+                if "SUM" in query:
+                    explanation += "- Calculates the total for a specified numerical column.\n"
+                if "MAX" in query:
+                    explanation += "- Finds the maximum value in a numerical column.\n"
+                if "AVG" in query:
+                    explanation += "- Computes the average value of a numerical column.\n"
+                if "WHERE" in query:
+                    explanation += "- Filters the data based on specific conditions (e.g., 'less than' or 'greater than').\n"
+                explanation += f"\nThe query retrieves data from the `{table_name}` table."
             elif filetype == "json" and isinstance(query, list):
-                explanation = "This NoSQL aggregation pipeline retrieves documents matching the specified criteria."
+                explanation = "This NoSQL query uses an aggregation pipeline to:\n\n"
+                explanation += "- Filter documents based on the specified criteria.\n"
+                explanation += "- Group the data and compute metrics such as sum, average, or maximum.\n"
+                explanation += f"\nThe query operates on the `{table_name}` collection in MongoDB."
             else:
                 explanation = "Unable to explain the query."
             st.write(explanation)
