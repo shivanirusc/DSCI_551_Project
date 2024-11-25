@@ -467,13 +467,13 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
         # Match a quantitative column
         matched_column = None
         for quant in quantitative_columns:
-            if token in quant.lower():
+            if token1 in quant.lower():
                 matched_column = quant
                 break
 
         if matched_column:
             operator = None
-            if i + 1 < len(tokens) and tokens1[i + 1] in operators:
+            if i + 1 < len(tokens1) and tokens1[i + 1] in operators:
                 operator = operators[tokens1[i + 1]]
                 i += 1  # Move to operator token
             
