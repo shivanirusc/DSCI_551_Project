@@ -385,6 +385,55 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
             nat_lang_query = f"Maximum {matched_column}"
             return nat_lang_query, sql_query
 
+    # Step 7: Handle 'minimum' or 'min' queries
+    if any(word in tokens for word in ["minimum", "min"]):
+        # Match quantitative column
+        matched_column = None
+        for quant in quantitative_columns:
+            if any(token in quant.lower() for token in normalized_tokens):
+                matched_column = quant
+                break  # Exit loop once a match is found
+        # Generate SQL query if a quantitative column is matched
+        if matched_column:
+            sql_query = f"SELECT '{matched_column}', MIN({matched_column}) as min_{matched_column} FROM {table_name}"
+            nat_lang_query = f"Minimum {matched_column}"
+            return nat_lang_query, sql_query
+
+    # Step 8: Handle comparison queries ('less than', 'greater than', 'equal to')
+    if any(word in tokens for word in ["less", "greater", "equal", "not"]):
+        # Identify the quantitative column and value for comparison
+        matched_column = None
+        comparison_operator = None
+        comparison_value = None
+
+        # Match a quantitative column
+        for quant in quantitative_columns:
+            if any(token in quant.lower() for token in normalized_tokens):
+                matched_column = quant
+                break  # Exit loop once a match is found
+
+        # Identify comparison operator
+        if "less" in normalized_tokens:
+            comparison_operator = "<"
+        elif "greater" in normalized_tokens:
+            comparison_operator = ">"
+        elif "equal" in normalized_tokens:
+            comparison_operator = "="
+        elif "not" in normalized_tokens and "equal" in normalized_tokens:
+            comparison_operator = "!="
+
+        # Extract the value for comparison
+        for token in normalized_tokens:
+            if token.isdigit():
+                comparison_value = token
+                break  # Exit loop once a number is found
+
+        # Generate SQL query if both column and value are identified
+        if matched_column and comparison_operator and comparison_value:
+            sql_query = f"SELECT * FROM {table_name} WHERE {matched_column} {comparison_operator} {comparison_value}"
+            nat_lang_query = f"Rows where {matched_column} is {comparison_operator} {comparison_value}"
+            return nat_lang_query, sql_query
+    
     # Step 7: Handle conditional queries (e.g., where quantity > 100)
     if "where" in tokens:
         condition_index = tokens.index("where") + 1
