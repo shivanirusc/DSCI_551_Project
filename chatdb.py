@@ -356,20 +356,53 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
     # Categorize columns based on the dataframe
     categorical_columns, quantitative_columns = categorize_columns(dataframe)
 
-    # Check if "total" is mentioned in the query
-    if "total" in tokens:
-        for quant in quantitative_columns:  # Loop through all quantitative columns (e.g., sales_amount)
-            for cat in categorical_columns:  # Loop through all categorical columns (e.g., product_category)
-                # Check if both quantitative and categorical columns are mentioned in the query
+     # Example pattern: "average <A> by <B>"
+    if "average" in tokens or "avg" in tokens:
+        for quant in quantitative_columns:
+            for cat in categorical_columns:
                 if quant in tokens and cat in tokens:
-                    # Generate SQL query using template
-                    sql_query = (
-                        f"SELECT {cat}, SUM({quant}) AS total_{quant} "
-                        f"FROM {table_name} GROUP BY {cat}"
-                    )
-                    # Generate natural language query
-                    nat_lang_query = f"Total {quant} by {cat}"
+                    sql_query = f"SELECT {cat}, AVG({quant}) as average_{quant} FROM {table_name} GROUP BY {cat}"
+                    nat_lang_query = f"Average {quant} by {cat}"
                     return nat_lang_query, sql_query
+
+    # Example pattern: "maximum <A> by <B>"
+    if "maximum" in tokens or "max" in tokens:
+        for quant in quantitative_columns:
+            for cat in categorical_columns:
+                if quant in tokens and cat in tokens:
+                    sql_query = f"SELECT {cat}, MAX({quant}) as max_{quant} FROM {table_name} GROUP BY {cat}"
+                    nat_lang_query = f"Maximum {quant} by {cat}"
+                    return nat_lang_query, sql_query
+
+    # Example pattern: "count of <A> by <B>"
+    if "count" in tokens or "total" in tokens:
+        for cat in categorical_columns:
+            if cat in tokens:
+                sql_query = f"SELECT {cat}, COUNT(*) as count_{cat} FROM {table_name} GROUP BY {cat}"
+                nat_lang_query = f"Count of {cat}"
+                return nat_lang_query, sql_query
+
+    # Example pattern: "total <A> where <B>"
+    if "where" in tokens:
+        for quant in quantitative_columns:
+            if quant in tokens:
+                condition = ' '.join(tokens[tokens.index("where")+1:])
+                sql_query = f"SELECT SUM({quant}) as total_{quant} FROM {table_name} WHERE {condition}"
+                nat_lang_query = f"Total {quant} where {condition}"
+                return nat_lang_query, sql_query
+
+    # Example pattern: "top N <A> by <B>"
+    if "top" in tokens and "by" in tokens:
+        for quant in quantitative_columns:
+            for cat in categorical_columns:
+                if quant in tokens and cat in tokens:
+                    n_value = 5  # Default top 5, could be extracted from input if specified
+                    sql_query = f"SELECT {cat}, SUM({quant}) as total_{quant} FROM {table_name} GROUP BY {cat} ORDER BY total_{quant} DESC LIMIT {n_value}"
+                    nat_lang_query = f"Top {n_value} {cat} by {quant}"
+                    return nat_lang_query, sql_query
+
+
+    
 #     # Handle JOINs
 #     join_keywords = ["join", "inner join", "left join", "right join", "full join", "cross join"]
 #     join_type = next((kw for kw in join_keywords if kw in tokens), None)
