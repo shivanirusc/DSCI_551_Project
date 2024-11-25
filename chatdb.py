@@ -309,16 +309,17 @@ def categorize_columns(dataframe):
     categorical = [col for col in dataframe.columns if dataframe[col].dtype == 'object']
     quantitative = [col for col in dataframe.columns if dataframe[col].dtype in ['int64', 'float64']]
     return categorical, quantitative
-
 def generate_sql_query(user_input, uploaded_columns, table_name, data):
-    # Step 1: Process the input query using NLP processing
+    # Step 1: Process the input query using NLP processing (basic tokenization and stemming)
     tokens = process_input(user_input)
     
-    # Step 2: Categorize columns in the DataFrame
+    print(f"Tokens extracted: {tokens}")
+
+    # Step 2: Categorize columns in the DataFrame (categorical vs. quantitative)
     categorical_columns, quantitative_columns = categorize_columns(data)
 
-    # Handle "total" or "sum" queries with conditions (e.g., "total sales where quantity > 100")
-    if "total" in tokens or "sum" in tokens:
+    # Step 3: Handle 'total' or 'sum' queries
+    if any(word in tokens for word in ["total", "sum"]):
         for quant in quantitative_columns:
             if quant in tokens:
                 condition = ' '.join(tokens[tokens.index("where")+1:]) if "where" in tokens else ""
@@ -326,44 +327,49 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
                 if condition:
                     sql_query += f" WHERE {condition}"
                 nat_lang_query = f"Total {quant} where {condition}" if condition else f"Total {quant}"
+                print(f"Generated query: {sql_query}")
                 return nat_lang_query, sql_query
 
-    # Handle "count" queries
-    if "count" in tokens or "total" in tokens:
+    # Step 4: Handle 'count' queries
+    if "count" in tokens:
         for cat in categorical_columns:
             if cat in tokens:
                 sql_query = f"SELECT {cat}, COUNT(*) as count_{cat} FROM {table_name} GROUP BY {cat}"
                 nat_lang_query = f"Count of {cat}"
+                print(f"Generated query: {sql_query}")
                 return nat_lang_query, sql_query
 
-    # Handle "average" or "avg" queries
-    if "average" in tokens or "avg" in tokens:
+    # Step 5: Handle 'average' or 'avg' queries
+    if any(word in tokens for word in ["average", "avg"]):
         for quant in quantitative_columns:
             for cat in categorical_columns:
                 if quant in tokens and cat in tokens:
                     sql_query = f"SELECT {cat}, AVG({quant}) as average_{quant} FROM {table_name} GROUP BY {cat}"
                     nat_lang_query = f"Average {quant} by {cat}"
+                    print(f"Generated query: {sql_query}")
                     return nat_lang_query, sql_query
 
-    # Handle "maximum" or "max" queries
-    if "maximum" in tokens or "max" in tokens:
+    # Step 6: Handle 'maximum' or 'max' queries
+    if any(word in tokens for word in ["maximum", "max"]):
         for quant in quantitative_columns:
-            for cat in categorical_columns:
-                if quant in tokens and cat in tokens:
-                    sql_query = f"SELECT {cat}, MAX({quant}) as max_{quant} FROM {table_name} GROUP BY {cat}"
-                    nat_lang_query = f"Maximum {quant} by {cat}"
-                    return nat_lang_query, sql_query
+            if quant in tokens:
+                sql_query = f"SELECT {quant}, MAX({quant}) as max_{quant} FROM {table_name}"
+                nat_lang_query = f"Maximum {quant}"
+                print(f"Generated query: {sql_query}")
+                return nat_lang_query, sql_query
 
-    # Handle "top N" queries (e.g., "top 5 stores by sales")
-    if "top" in tokens and "by" in tokens:
+    # Step 7: Handle conditional queries (e.g., where quantity > 100)
+    if "where" in tokens:
+        condition_index = tokens.index("where") + 1
+        condition = ' '.join(tokens[condition_index:])
         for quant in quantitative_columns:
-            for cat in categorical_columns:
-                if quant in tokens and cat in tokens:
-                    n_value = 5  # Default top N (could be dynamically handled)
-                    sql_query = f"SELECT {cat}, SUM({quant}) as total_{quant} FROM {table_name} GROUP BY {cat} ORDER BY total_{quant} DESC LIMIT {n_value}"
-                    nat_lang_query = f"Top {n_value} {cat} by {quant}"
-                    return nat_lang_query, sql_query
+            if quant in tokens:
+                sql_query = f"SELECT {quant} FROM {table_name} WHERE {condition}"
+                nat_lang_query = f"{quant} where {condition}"
+                print(f"Generated query: {sql_query}")
+                return nat_lang_query, sql_query
 
+    # Fallback in case no match is found
     return "Query could not be interpreted. Please try rephrasing.", ""
 
 # Streamlit app setup
