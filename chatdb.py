@@ -374,6 +374,14 @@ if data is not None:
                 "query": query
             })
         
+        st.write("---")
+        st.subheader("Generated Query 🔍")
+        if query:
+            st.markdown(f"**Natural Language Interpretation:** `{nat_lang_query}`")
+            st.code(query)
+        else:
+            st.error("No query generated. Please refine your input.")
+        
         # Explanation Section
         st.write("---")
         st.subheader("Query Explanation 📝")
