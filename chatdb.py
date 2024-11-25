@@ -332,38 +332,40 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     st.write(f"categorical_columns extracted: {categorical_columns}")
     st.write(f"quantitative_columns extracted: {quantitative_columns}")
     
+    
     # Handle sum query with conditions: "sum of <A> where <B>"
     if "sum" in tokens or "total" in tokens:
-        for quant in quantitative_columns:
-            if quant in tokens:
-                # Check for conditions (e.g., where quantity > 100)
-                if "where" in tokens:
-                    where_index = tokens.index("where")
-                    condition_tokens = tokens[where_index + 1:]
+        column = map_columns(tokens, quantitative_columns)  # Map tokens to columns
+        
+        if column:  # If a column is found
+            # Check for conditions (e.g., where quantity > 100)
+            if "where" in tokens:
+                where_index = tokens.index("where")
+                condition_tokens = tokens[where_index + 1:]
 
-                    # Check for common comparison operators (greater, less, etc.)
-                    operators = ["greater", "less", "equal", "not"]
-                    condition = ""
-                    value = None
+                # Check for common comparison operators (greater, less, etc.)
+                operators = ["greater", "less", "equal", "not"]
+                condition = ""
+                value = None
 
-                    for i, token in enumerate(condition_tokens):
-                        if token in operators:
-                            operator = token
-                            value = condition_tokens[i + 1]
-                            if operator == "greater":
-                                condition = f"{quant} > {value}"
-                            elif operator == "less":
-                                condition = f"{quant} < {value}"
-                            elif operator == "equal":
-                                condition = f"{quant} = {value}"
-                            elif operator == "not":
-                                if condition_tokens[i + 1] == "equal":
-                                    condition = f"{quant} != {value}"
-                            break
+                for i, token in enumerate(condition_tokens):
+                    if token in operators:
+                        operator = token
+                        value = condition_tokens[i + 1]
+                        if operator == "greater":
+                            condition = f"{column} > {value}"
+                        elif operator == "less":
+                            condition = f"{column} < {value}"
+                        elif operator == "equal":
+                            condition = f"{column} = {value}"
+                        elif operator == "not":
+                            if condition_tokens[i + 1] == "equal":
+                                condition = f"{column} != {value}"
+                        break
                     
-                    sql_query = f"SELECT SUM({quant}) as total_{quant} FROM {table_name} WHERE {condition}"
-                    nat_lang_query = f"Sum of {quant} where {condition}"
-                    return nat_lang_query, sql_query
+                sql_query = f"SELECT SUM({column}) as total_{column} FROM {table_name} WHERE {condition}"
+                nat_lang_query = f"Sum of {column} where {condition}"
+                return nat_lang_query, sql_query
 
     # Step 4: Handle 'count' queries
     if "count" in tokens:
