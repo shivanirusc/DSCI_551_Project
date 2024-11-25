@@ -172,9 +172,6 @@ def get_mongo_queries_nat(tokens, cat_cols, quant_cols, unique_cols, range_, col
             continue
     # total case
     if set(tokens) & set(total_tokens):
-        if len(quant_chosen) > 1 and'total' in quant_chosen:
-            quant_chosen.remove('total')
-        print(quant_chosen)
         if(cat_chosen and quant_chosen):
             result = gen_total_query(cat_cols, quant_cols, collectionName, specific_cat=cat_chosen[0], specific_quant=quant_chosen[0])
     elif set(tokens) & set(count_tokens):
@@ -272,8 +269,8 @@ def gen_total_query(cat_cols, quant_cols, collectionName, specific_cat=None, spe
                                     string.punctuation))
     nat_language = f"Total {random_quant} for each {random_cat} category"
     collection = mongo_db[collectionName]
-    query_result = collection.aggregate([{"$group": {"_id": f"${random_cat}", f"Total {random_quant}": {"$sum": f"${random_quant}"}}}, 
-                                         {"$project": {f"{random_cat}": "$_id", f"Total {random_quant}": 1, "_id": 0}},{"$limit": 5}])
+    query_result = collection.aggregate([{"$group": {"_id": f"${random_cat}", random_quant_var: {"$sum": f"${random_quant}"}}}, 
+                                         {"$project": {f"{random_cat}": "$_id", random_quant_var: 1, "_id": 0}},{"$limit": 5}])
     query = [{"$group": {"_id": f"${random_cat}", random_quant_var: {"$sum": f"${random_quant}"}}}, 
                                          {"$project": {f"{random_cat}": "$_id", random_quant_var: 1, "_id": 0}},{"$limit": 5}]
     query_string = f"collection.aggregate({json.dumps(query)})"
@@ -299,6 +296,8 @@ def gen_average_query(cat_cols, quant_cols, collectionName, specific_cat=None, s
                                     string.punctuation))
     nat_language = f"Average {random_quant} for each {random_cat} category"
     collection = mongo_db[collectionName]
+    print(random_cat)
+    print(random_quant)
     query_result = collection.aggregate([{"$group": {"_id": f"${random_cat}", f"Average {random_quant}": {"$avg": f"${random_quant}"}}}, 
                                          {"$project": {f"{random_cat}": "$_id", f"Average {random_quant}": 1, "_id": 0}},{"$limit": 5}])
     query = [{"$group": {"_id": f"${random_cat}", random_quant_var: {"$avg": f"${random_quant}"}}}, 
@@ -357,9 +356,9 @@ def gen_gtlt_query_group(cat_cols, quant_cols, range_, ineq, collectionName, spe
     ineq_val = ineq_input if ineq_input else random.randint(int(range_[random_quant][0]) + 1, int(range_[random_quant][1]) - 1)
     nat_language = f"{random_cat} with {random_quant_var} {ineq_str} than {ineq_val}"
     collection = mongo_db[collectionName]
-    query_result = collection.aggregate([{"$group": {"_id": f"${random_cat}", f"Average {random_quant}": {"$avg": f"${random_quant}"}}}, 
+    query_result = collection.aggregate([{"$group": {"_id": f"${random_cat}", random_quant_var: {"$avg": f"${random_quant}"}}}, 
                                          {"$match": {random_quant_var: {f"${ineq}": ineq_val}}},
-                                         {"$project": {f"{random_cat}": "$_id", f"Average {random_quant}": 1, "_id": 0}}
+                                         {"$project": {f"{random_cat}": "$_id", random_quant_var: 1, "_id": 0}}
                                          ,{"$limit": 5}])
     query = [{"$group": {"_id": f"${random_cat}", random_quant_var: {"$avg": f"${random_quant}"}}}, 
                                          {"$match": {random_quant_var: {f"${ineq}": ineq_val}}},
@@ -406,17 +405,26 @@ def gen_gtlt_query_unique(unique_cols, quant_cols, range_, ineq, collectionName,
 
 
 # setup
-# download_nltk_resources()
-# filename = "used_car.json"
-# df = pd.read_json(f'data/{filename}')
+download_nltk_resources()
+filename = "furniture.json"
+df = pd.read_json(f'data/{filename}')
 # # # preprocessing
-# numeric, categorical, nested, unique, df_updated = infer_types(df)
-# print("NUMERIC BASE FILE", numeric)
-# print("NUMERIC", numeric)
-# print("CATEGORICAL", categorical)
-# print("UNIQUE", unique)
-# range_vals = get_quant_range(df, numeric)
-# collection_name = store_in_mongodb(df_updated, filename)
+numeric, categorical, nested, unique, df_updated = infer_types(df)
+print("NUMERIC BASE FILE", numeric)
+print("NUMERIC", numeric)
+print("CATEGORICAL", categorical)
+print("UNIQUE", unique)
+range_vals = get_quant_range(df, numeric)
+collection_name = store_in_mongodb(df_updated, filename)
+collection = mongo_db[collection_name]
+query_result = collection.aggregate([{"$group": {"_id": f"${categorical[0]}", f"Average {numeric[0]}": {"$avg": f"${numeric[0]}"}}}, 
+                                         {"$project": {f"{categorical[0]}": "$_id", f"Average {numeric[0]}": 1, "_id": 0}},{"$limit": 5}])
+data = list(query_result)
+headers = list(data[0].keys())[::-1] if data else []
+# Ensure rows are aligned with reversed headers
+rows = [[row[h] for h in headers] for row in data]
+print("Below is the result of the query:")
+print(tabulate(rows, headers=headers, tablefmt="grid"))
 
 # # TEST REQ 1: GET EXAMPLE QUERIES USING TEMPLATE
 # get_sample_mongo_gen(categorical, numeric, unique, range_vals, collection_name)

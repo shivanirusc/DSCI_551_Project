@@ -11,6 +11,7 @@ import os
 import re
 
 from sql_queries import categorize_columns, generate_sample_queries, generate_construct_queries, execute_query
+from mongo_queries import get_quant_range, infer_types, get_sample_mongo_specific, get_sample_mongo_gen, get_mongo_queries_nat, process_input_mongo
 
 # Download NLTK resources
 def download_nltk_resources():
@@ -34,6 +35,7 @@ def basic_tokenizer(user_input):
 mongo_client = MongoClient("mongodb://localhost:27017/")
 mongo_db = mongo_client["chatdb"]
 sqldb_list = []
+collection_list = []
 
 # Helper function to check allowed file types
 def allowed_file(filename):
@@ -45,6 +47,7 @@ def store_in_mongodb(data, json_name):
     collection = mongo_db[collection_name]
     collection.drop()  # Clear old data before inserting new
     collection.insert_many(data.to_dict(orient='records'))
+    collection_list.append(collection_name)
     return data.columns.tolist()
 
 # Function to store data in SQLite
@@ -345,8 +348,10 @@ if file:
             table_name = filename[:-4]
         elif filetype == "json":
             data = pd.read_json(file)
+            numeric, categorical, nested, unique, data = infer_types(data)
+            range_vals = get_quant_range(data, numeric)
             uploaded_columns = store_in_mongodb(data, filename)
-            table_name = filename[:-5]
+            collection_name = filename[:-5]
         st.success(f"Dataset uploaded successfully! Columns in your data: {uploaded_columns}")
     else:
 
@@ -358,9 +363,16 @@ if data is not None:
     st.write("---")
     st.subheader("Chat with ChatDB 💬")
     user_input = st.text_input("Type your query here:")
+    tokens = process_input_mongo(user_input)
 
     if user_input and uploaded_columns:
-        nat_lang_query, query = generate_sql_query(user_input, uploaded_columns, table_name, data)
+        if filetype == "csv":
+            nat_lang_query, query = generate_sql_query(user_input, uploaded_columns, table_name, data)
+        else:
+            res = get_mongo_queries_nat(tokens, categorical, numeric, unique, range_vals, collection_name)
+            if res:
+                nat_lang_query = res[2]
+                query = res[1]
 
         # Add to chat history only if a valid query is generated
         if query:
@@ -400,11 +412,19 @@ if data is not None:
                 if "WHERE" in query:
                     explanation += "- Filters the data based on specific conditions (e.g., 'less than' or 'greater than').\n"
                 explanation += f"\nThe query retrieves data from the `{table_name}` table."
-            elif filetype == "json" and isinstance(query, list):
-                explanation = "This NoSQL query uses an aggregation pipeline to:\n\n"
-                explanation += "- Filter documents based on the specified criteria.\n"
-                explanation += "- Group the data and compute metrics such as sum, average, or maximum.\n"
-                explanation += f"\nThe query operates on the `{table_name}` collection in MongoDB."
+            elif filetype == "json" and isinstance(query, str):
+                explanation = "This MongoDb query performs the following operations:\n\n"
+                if "aggregate" in query:
+                    explanation += "- Groups the data by one or more categorical columns.\n"
+                if "sum" in query:
+                    explanation += "- Calculates the total for a specified numerical column.\n"
+                if "avg" in query:
+                    explanation += "- Computes the average value of a numerical column.\n"
+                if "gt" in query:
+                    explanation += "- Only returns documents with the specified attribute greater than the specified value.\n"
+                if "lt" in query:
+                    explanation += "- Only returns documents with the specified attribute less than the specified value.\n"
+                explanation += f"\nThe query operates on the `{collection_name}` collection in MongoDB."
             else:
                 explanation = "Unable to explain the query."
             st.write(explanation)
@@ -421,8 +441,9 @@ if data is not None:
                     result = pd.read_sql_query(query, conn)
                     st.dataframe(result)
                 elif filetype == "json":
-                    collection = mongo_db[table_name]
-                    result = list(collection.aggregate(query))
+                    collection = mongo_db[collection_name]
+                    result = list(res[0])
+                    print(table_name)
                     result_df = pd.DataFrame(result)
                     st.dataframe(result_df)
             except Exception as e:
