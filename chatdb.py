@@ -234,11 +234,12 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
         print(f"Generated query: {sql_query}")
         return nat_lang_query, sql_query
 
+    # Support for nested conditions
+    nested_conditions = []
+    temp_condition = []
+    
     # Handle nested conditions and logical operators
     if "(" in tokens or ")" in tokens:
-        # Support for nested conditions
-        nested_conditions = []
-        temp_condition = []
         i = 0
         while i < len(tokens):
                 token = tokens[i]
