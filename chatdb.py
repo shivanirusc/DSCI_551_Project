@@ -278,9 +278,9 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
 
     # Handle custom aggregations
     if "total" in tokens and "average" in tokens:
-    sum_column = map_columns(tokens, quantitative_columns)
-    avg_column = map_columns(tokens, quantitative_columns)
-    group_by_column = map_columns(tokens, categorical_columns)
+        sum_column = map_columns(tokens, quantitative_columns)
+        avg_column = map_columns(tokens, quantitative_columns)
+        group_by_column = map_columns(tokens, categorical_columns)
 
     if sum_column and avg_column and group_by_column:
         sql_query = f"SELECT {group_by_column}, SUM({sum_column}) as total_{sum_column}, AVG({avg_column}) as avg_{avg_column} FROM {table_name} GROUP BY {group_by_column}"
