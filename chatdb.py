@@ -445,22 +445,17 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
     }
     conjunctions = ["and", "or"]
 
-    # Track the current conjunction (AND/OR)
-    current_conjunction = "AND"
-
-    # Iterate over tokens to parse conditions
     i = 0
     while i < len(tokens):
         token = tokens[i]
         
-        # Check if token matches a quantitative column
+        # Match a quantitative column
         matched_column = None
         for quant in quantitative_columns:
             if token in quant.lower():
                 matched_column = quant
                 break
-        
-        # If a column is matched, look for an operator and value(s)
+
         if matched_column:
             operator = None
             if i + 1 < len(tokens) and tokens[i + 1] in operators:
@@ -480,20 +475,17 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
                 conditions.append(f"{matched_column} {operator} {value}")
                 i += 1  # Move past the value
         
-        # Check for conjunctions
-        elif token in conjunctions:
-            current_conjunction = token.upper()
+        # Handle conjunctions
+        if token in conjunctions:
+            conditions.append(token.upper())
         
-        # Append conjunction between conditions
-        if len(conditions) > 1 and current_conjunction:
-            conditions[-1] = f"{conditions[-2]} {current_conjunction} {conditions[-1]}"
-            conditions = [conditions[-1]]  # Collapse to single condition
-        
-        i += 1  # Move to the next token
+        i += 1
+
+    # Join conditions with proper logic
+    where_clause = " ".join(conditions)
 
     # Generate SQL query
-    if conditions:
-        where_clause = " ".join(conditions)
+    if where_clause:
         sql_query = f"SELECT * FROM {table_name} WHERE {where_clause}"
         nat_lang_query = f"Rows where {where_clause}"
         print(f"Generated query: {sql_query}")
