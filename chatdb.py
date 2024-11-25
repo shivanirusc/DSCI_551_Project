@@ -432,17 +432,6 @@ def generate_sql_query(user_input, column_names, table_name, dataframe):
             nat_lang_query = f"Total {condition_column[0]} by {', '.join(group_column)} where {condition}"
             return nat_lang_query, sql_query
     
-    # Extract the join type, base table, join table, and join columns from the user input
-    join_type, table_name, join_table, join_columns = extract_join_info(user_input, uploaded_columns)
-    
-    # Construct the SQL query based on the extracted information
-    if join_type and join_table and join_columns:
-        sql_query = f"SELECT * FROM {table_name} {join_type} JOIN {join_table} ON {join_columns[0]} = {join_columns[1]}"
-        return user_input, sql_query
-    else:
-        sql_query = f"SELECT * FROM {table_name}"
-        return user_input, sql_query
-    
     # 2. Aggregation with JOIN (e.g., SUM, AVG)
     if "total" in tokens or "sum" in tokens or "average" in tokens or "avg" in tokens:
         for quant in quantitative_columns:
