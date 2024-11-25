@@ -77,6 +77,13 @@ def map_columns(tokens, columns):
                 return column
     return None
 
+def generate_combined_tokens(tokens):
+    combined_tokens = [
+        ' '.join(tokens[i:j+1]) for i in range(len(tokens)) for j in range(i, len(tokens))
+    ]
+    combined_tokens = [token.replace(' ', '_').lower() for token in combined_tokens]
+    return combined_tokens
+
 # Example function for categorizing columns
 def categorize_columns(dataframe):
     categorical = [col for col in dataframe.columns if dataframe[col].dtype == 'object']
@@ -319,13 +326,16 @@ def generate_sql_query(user_input, uploaded_columns, table_name, data):
 
     # Handle wildcard searches
     if "contains" in tokens or "like" in tokens:
+        combined_tokens = generate_combined_tokens(tokens)
         for cat in categorical_columns:
-            if any(token in cat.lower() for token in tokens):
-                value = [token for token in tokens if token not in ["contains", "like"]]
-                search_value = value[-1] if value else ""
-                sql_query = f"SELECT * FROM {table_name} WHERE {cat} LIKE '%{search_value}%'"
-                nat_lang_query = f"Rows where {cat} contains {search_value}"
-                return nat_lang_query, sql_query
+            if cat.lower() in combined_tokens:
+                # Extract the search value
+                search_value = next((token for token in tokens if token not in ["contains", "like"]), None)
+                if search_value:
+                    sql_query = f"SELECT * FROM {table_name} WHERE {cat} LIKE '%{search_value}%'"
+                    nat_lang_query = f"Rows where {cat} contains '{search_value}'"
+                    return nat_lang_query, sql_query
+
 
     # Handle custom aggregations
     if "total" in tokens and "average" in tokens:
