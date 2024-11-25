@@ -11,6 +11,7 @@ import random
 from tabulate import tabulate
 import json
 import numpy as np
+import streamlit as st
 
 # some learning notes as I have been going:
 # don't cover cases where an attribute is a list or dict. These could be queries all on their own. This could be something we add for 
