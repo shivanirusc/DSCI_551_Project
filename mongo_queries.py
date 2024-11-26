@@ -213,7 +213,13 @@ def get_mongo_queries_nat(user_input, tokens, cat_cols, quant_cols, unique_cols,
             result = gen_gtlt_query_unique(unique_cols, quant_cols, range_, "gt", collectionName, specific_unique=unique_chosen[0], specific_quant=quant_chosen[0], ineq_input=extracted_numbers[0])
     elif set(tokens) & set(count_tokens):
         if(cat_chosen):
-            result = gen_counts_query(cat_cols, collectionName, specific_cat=cat_chosen[0])
+            if "sort" in tokens or "order" in tokens:
+                if sort_field_:
+                    result = gen_counts_query(cat_cols, collectionName, specific_cat=cat_chosen[0], sort_field = sort_field_.capitalize(), order=sort_order_)
+                else:
+                    result = gen_counts_query(cat_cols, collectionName, specific_cat=cat_chosen[0], sort_field="Count", order=sort_order_)
+            else:
+                result = gen_counts_query(cat_cols, collectionName, specific_cat=cat_chosen[0])
     # average case
     elif set(tokens) & set(average_tokens):
         if(cat_chosen and quant_chosen):
@@ -356,7 +362,7 @@ def gen_average_query(cat_cols, quant_cols, collectionName, specific_cat=None, s
     nat_language = f"Average {random_quant} for each {random_cat} category"
     collection = mongo_db[collectionName]
     pipeline = [{"$group": {"_id": f"${random_cat}", f"Average {random_quant}": {"$avg": f"${random_quant}"}}}, 
-                                         {"$project": {f"{random_cat}": "$_id", f"Average {random_quant}": 1, "_id": 0}},{"$limit": 5}]
+                                         {"$project": {f"{random_cat}": "$_id", f"Average {random_quant}": 1, "_id": 0}}]
     if sort_field:
         pipeline.append({"$sort": {sort_field: order_val}})
         nat_language = nat_language + " sorted by " + sort_field + " in " + order + " order"
@@ -365,7 +371,7 @@ def gen_average_query(cat_cols, quant_cols, collectionName, specific_cat=None, s
     query_string = f"collection.aggregate({json.dumps(pipeline)})"
     return [query_result, query_string, nat_language, "Average"]
 
-def gen_counts_query(cat_cols, collectionName, specific_cat=None):
+def gen_counts_query(cat_cols, collectionName, specific_cat=None,  sort_field=None, order='asc', limit=5):
     """Generates a query in the Count for each <B> Category, where A is a random quantitative variable and B is a 
         random categorical variable, prints this query in natural language and mongo format, and prints the head(5) of the output
 
@@ -376,14 +382,18 @@ def gen_counts_query(cat_cols, collectionName, specific_cat=None):
     collectionName : str
         Name of the collection we are currently querying on
     """
+    order_val = 1 if order == 'asc' else -1
     random_cat = specific_cat if specific_cat else random.choice(cat_cols)
     nat_language = f"Counts for each {random_cat} category"
     collection = mongo_db[collectionName]
-    query_result = collection.aggregate([{"$group": {"_id": f"${random_cat}", "Count": {"$sum": 1}}}, 
-                                         {"$project": {f"{random_cat}": "$_id", "Count": 1, "_id": 0}},{"$limit": 5}])
-    query = [{"$group": {"_id": f"${random_cat}", "Count": {"$sum": 1}}}, 
-                                         {"$project": {f"{random_cat}": "$_id", "Count": 1, "_id": 0}},{"$limit": 5}]
-    query_string = f"collection.aggregate({json.dumps(query)})"
+    pipeline = [{"$group": {"_id": f"${random_cat}", "Count": {"$sum": 1}}}, 
+                                         {"$project": {f"{random_cat}": "$_id", "Count": 1, "_id": 0}}]
+    if sort_field:
+        pipeline.append({"$sort": {sort_field: order_val}})
+        nat_language = nat_language + " sorted by " + sort_field + " in " + order + " order"
+    pipeline.append({"$limit": limit})
+    query_result = collection.aggregate(pipeline)
+    query_string = f"collection.aggregate({json.dumps(pipeline)})"
     return [query_result, query_string, nat_language, "Counts"]
 
 def gen_gtlt_query_group(cat_cols, quant_cols, range_, ineq, collectionName, specific_cat=None, specific_quant=None, ineq_input=None):
