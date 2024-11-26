@@ -163,7 +163,7 @@ def get_quant_range(df_, quant_cols):
 def get_mongo_queries_nat(user_input, tokens, cat_cols, quant_cols, unique_cols, range_, collectionName):
     total_tokens = ["sum", "total"]
     average_tokens = ["average", "mean"]
-    greater_tokens = ["greater", "more", "than", "above"]
+    greater_tokens = ["greater", "more", "above"]
     less_tokens = ["less", "fewer", "below"]
     count_tokens = ["count", "number", "counts"]
     order_tokens = ["ascending", "descending", "order", "sort"]
@@ -220,6 +220,12 @@ def get_mongo_queries_nat(user_input, tokens, cat_cols, quant_cols, unique_cols,
                     result = gen_counts_query(cat_cols, collectionName, specific_cat=cat_chosen[0], sort_field="Count", order=sort_order_)
             else:
                 result = gen_counts_query(cat_cols, collectionName, specific_cat=cat_chosen[0])
+    # less than aggregate case
+    elif set(tokens) & set(less_tokens):
+        if(cat_chosen and quant_chosen and extracted_numbers):
+            result = gen_gtlt_query_group(cat_cols, quant_cols, range_, "lt", collectionName, specific_cat=cat_chosen[0], specific_quant=quant_chosen[0], ineq_input=extracted_numbers[0])
+        elif(quant_chosen and extracted_numbers and unique_chosen and not cat_chosen):
+            result = gen_gtlt_query_unique(unique_cols, quant_cols, range_, "lt", collectionName, specific_unique=unique_chosen[0], specific_quant=quant_chosen[0], ineq_input=extracted_numbers[0])
     # average case
     elif set(tokens) & set(average_tokens):
         if(cat_chosen and quant_chosen):
@@ -230,13 +236,6 @@ def get_mongo_queries_nat(user_input, tokens, cat_cols, quant_cols, unique_cols,
                     result = gen_average_query(cat_cols, quant_cols, collectionName, specific_cat=cat_chosen[0], specific_quant=quant_chosen[0],  sort_field=quant_chosen[0], order=sort_order_)
             else:
                 result = gen_average_query(cat_cols, quant_cols, collectionName, specific_cat=cat_chosen[0], specific_quant=quant_chosen[0])
-   
-    # greater than aggregate case
-    elif set(tokens) & set(less_tokens):
-        if(cat_chosen and quant_chosen and extracted_numbers):
-            result = gen_gtlt_query_group(cat_cols, quant_cols, range_, "lt", collectionName, specific_cat=cat_chosen[0], specific_quant=quant_chosen[0], ineq_input=extracted_numbers[0])
-        elif(quant_chosen and extracted_numbers and unique_chosen and not cat_chosen):
-            result = gen_gtlt_query_unique(unique_cols, quant_cols, range_, "lt", collectionName, specific_unique=unique_chosen[0], specific_quant=quant_chosen[0], ineq_input=extracted_numbers[0])
     # do a greater than or less than case
     else:
         print("We couldn't find a query matching your request, please try another and make sure you use the correct column names in your queries")

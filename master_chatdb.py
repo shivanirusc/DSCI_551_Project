@@ -426,6 +426,8 @@ if data is not None:
                                 explanation += "- Only returns documents with the specified attribute greater than the specified value.\n"
                             if "lt" in query:
                                 explanation += "- Only returns documents with the specified attribute less than the specified value.\n"
+                            if "sort" in query:
+                                explanation += "- Sort by a specified attribute, in either ascending or descending order.\n"
                             explanation += f"\nThe query operates on the `{collection_name}` collection in MongoDB."
                         else:
                             explanation = "Unable to explain the query."
@@ -512,6 +514,8 @@ if data is not None:
                         explanation += "- Only returns documents with the specified attribute greater than the specified value.\n"
                     if "lt" in query:
                         explanation += "- Only returns documents with the specified attribute less than the specified value.\n"
+                    if "sort" in query:
+                        explanation += "- Sort by a specified attribute, in either ascending or descending order.\n"
                     explanation += f"\nThe query operates on the `{collection_name}` collection in MongoDB."
                 else:
                     explanation = "Unable to explain the query."
@@ -648,6 +652,8 @@ if data is not None:
                         explanation += "- Only returns documents with the specified attribute greater than the specified value.\n"
                     if "lt" in query:
                         explanation += "- Only returns documents with the specified attribute less than the specified value.\n"
+                    if "sort" in query:
+                        explanation += "- Sort by a specified attribute, in either ascending or descending order.\n"
                     explanation += f"\nThe query operates on the `{collection_name}` collection in MongoDB."
                 else:
                     explanation = "Unable to explain the query."
