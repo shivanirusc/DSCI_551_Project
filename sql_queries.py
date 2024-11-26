@@ -51,7 +51,6 @@ def generate_sample_queries(table_name, dataframe):
         # Handle cases where the dataset doesn't meet requirements
         return 0
 
-    
     for _ in range(3):  # Generate 3 sample queries
         sql, nl = random.choice(templates)
         column = random.choice(categorical)
@@ -60,7 +59,6 @@ def generate_sample_queries(table_name, dataframe):
         sql_query = sql.format(column=column, value_column=value_column, table=table_name)
         nl_query = nl.format(column=column, value_column=value_column)
 
-        
 
     return nl_query, sql_query
 

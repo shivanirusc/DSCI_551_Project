@@ -633,6 +633,8 @@ if data is not None:
                         explanation += "- Computes the average value of a numerical column.\n"
                     if "WHERE" in query:
                         explanation += "- Filters the data based on specific conditions (e.g., 'less than' or 'greater than').\n"
+                    if "ORDER BY" in query:
+                        explanation += "- Sorts data based the values of a numerical column. \n"
                     explanation += f"\nThe query retrieves data from the `{table_name}` table."
                 elif filetype == "json" and isinstance(query, str):
                     explanation = "This MongoDb query performs the following operations:\n\n"
