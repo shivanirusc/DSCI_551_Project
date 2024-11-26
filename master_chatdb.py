@@ -585,18 +585,19 @@ if data is not None:
                 nat_lang_queries, queries = [nat_lang_query], [query]  # Wrap results to list to execute later
 
         # Add to chat history only if a valid query is generated
-        for nat_lang_query, query in zip(nat_lang_queries, queries):
-            if query:
-                # Initialize chat history if not already present
-                if "chat_history" not in st.session_state:
-                    st.session_state["chat_history"] = []
+        if nat_lang_query and query:
+            for nat_lang_query, query in zip(nat_lang_queries, queries):
+                if query:
+                    # Initialize chat history if not already present
+                    if "chat_history" not in st.session_state:
+                        st.session_state["chat_history"] = []
 
-                # Add current query and response to chat history
-                st.session_state["chat_history"].append({
-                    "user_input": user_input,
-                    "nat_lang_query": nat_lang_query,
-                    "query": query
-                })
+                    # Add current query and response to chat history
+                    st.session_state["chat_history"].append({
+                        "user_input": user_input,
+                        "nat_lang_query": nat_lang_query,
+                        "query": query
+                    })
         
         st.write("---")
         st.subheader("Generated Query 🔍")

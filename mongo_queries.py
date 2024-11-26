@@ -144,7 +144,16 @@ def get_quant_range(df_, quant_cols):
     for col in quant_cols:
         min_val = df_[col].min()
         max_val = df_[col].max()
-        range_dict[col] = (min_val, max_val)
+        
+        # Calculate the buffer size (5% of the range by default)
+        range_span = max_val - min_val
+        buffer = range_span * 0.10
+        
+        # Ensure that the range includes the data, add the buffer
+        buffered_min = min_val - buffer if min_val - buffer >= 0 else 0  # Avoid negative values
+        buffered_max = max_val + buffer
+        
+        range_dict[col] = (buffered_min, buffered_max)
     return range_dict
 # -------------------------------- DATA PROCESSING --------------------------------
 
@@ -284,6 +293,9 @@ def get_sample_mongo_specific(tokens, cat_cols, quant_cols, unique_cols, range_,
         order_chosen = random.choice(order)
         all_queries['Total'] = gen_total_query(cat_cols, quant_cols, collectionName, specific_cat = cat_col, specific_quant = quant_col, sort_field=sort_total, order = order_chosen)
         all_queries['Average'] = gen_average_query(cat_cols, quant_cols, collectionName, specific_quant = quant_col, sort_field=sort_average, order = order_chosen)
+        selected_pairs = random.sample(list(all_queries.items()), 1)
+        selected_value = selected_pairs[0][1]
+        data = selected_value
         return data
     else:
         print("We couldn't quite find the query type you were looking for. Here are some suggestions: \n- aggregate\n- find")
