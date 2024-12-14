@@ -15,7 +15,7 @@
 
 >>streamlit run master_chatdb.py
 
-Open the local URL (usually http://localhost:8501).
+Open the local URL (http://localhost:27017).
 
 **Use the Interface:**
 
