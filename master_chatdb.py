@@ -83,6 +83,7 @@ def map_columns(tokens, columns):
                 return column
     return None
 
+# Used for generating combined column names which has spaces or underscores.
 def generate_combined_tokens(tokens):
     combined_tokens = [
         ' '.join(tokens[i:j+1]) for i in range(len(tokens)) for j in range(i, len(tokens))
