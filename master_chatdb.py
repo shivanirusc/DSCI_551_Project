@@ -14,6 +14,7 @@ from streamlit_extras.stylable_container import stylable_container
 
 from sql_queries import categorize_columns, generate_sample_queries, generate_construct_queries, execute_query
 from mongo_queries import get_quant_range, infer_types, get_sample_mongo_specific, get_sample_mongo_gen, get_mongo_queries_nat, process_input_mongo
+from nlp_sql_queries import generate_sql_query
 
 # Download NLTK resources
 def download_nltk_resources():
