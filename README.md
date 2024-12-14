@@ -1,4 +1,4 @@
-*ChatDB*
+***ChatDB***
 **master_chatdb.py is the main application file for interacting with datasets through natural language queries. It uses NLP to convert your input into SQL or MongoDB queries, returning results instantly.**
 
 **Quick Start**
