@@ -5,12 +5,15 @@
 **Clone & Install:**
 
 >> git clone https://github.com/shivanirusc/DSCI_551_Project.git
+
 >> cd DSCI_551_Project
+
 >> pip install -r requirements.txt
 
 **Run the App:**
 
 >>streamlit run master_chatdb.py
+
 Open the local URL (usually http://localhost:8501).
 
 **Use the Interface:**
