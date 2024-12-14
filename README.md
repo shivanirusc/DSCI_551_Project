@@ -18,10 +18,14 @@
 Open the local URL (usually http://localhost:8501).
 
 **Use the Interface:**
+
 Upload a CSV (for SQL) or JSON (for MongoDB).
+
 Ask questions in plain English (e.g., “Show total sales by region”).
+
 View queries and results directly in the browser.
 
 **Direct Link**
+
 Click here to open the hosted Streamlit app: https://dsci551project-ggthrcj6wsvlvoch2d2lvd.streamlit.app/
 
