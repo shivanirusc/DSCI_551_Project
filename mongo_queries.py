@@ -12,11 +12,6 @@ from tabulate import tabulate
 import json
 import numpy as np
 
-# some learning notes as I have been going:
-# don't cover cases where an attribute is a list or dict. These could be queries all on their own. This could be something we add for 
-# complexity
-# can add a conditional to each generate function to do order by, DESC, ASC, etc. 
-
 try:
     _create_unverified_https_context = ssl._create_unverified_context
 except AttributeError:
@@ -62,7 +57,8 @@ def process_input_mongo(user_input):
 def store_in_mongodb(data, json_name):
     collectionName = json_name[:-5]
     collection = mongo_db[collectionName]
-    collection.drop()  # Clear old data before inserting new
+    # Clear old data before inserting new
+    collection.drop()
     collection.insert_many(data.to_dict(orient='records'))
     mongodb_list.append(collectionName)
     return collectionName
@@ -172,7 +168,7 @@ def get_mongo_queries_nat(user_input, tokens, cat_cols, quant_cols, unique_cols,
     unique_chosen = list(set(token.lower() for token in tokens) & set(col.lower() for col in unique_cols))
     extracted_numbers = []
     result = []
-    user_input = user_input.lower()  # Normalize case
+    user_input = user_input.lower()
     tokens_sort = user_input.split()
     sort_field_ = ""
     if "sort" in tokens_sort and "by" in tokens_sort:
@@ -472,40 +468,3 @@ def gen_gtlt_query_unique(unique_cols, quant_cols, range_, ineq, collectionName,
     return [query_result, query_string, nat_language, ineq_str + " than"]
 
 # -------------------------------- MONGO HELPER FUNCTIONS --------------------------------
-
-
-# setup
-# download_nltk_resources()
-# filename = "used_car.json"
-# df = pd.read_json(f'data/{filename}')
-# # # preprocessing
-# numeric, categorical, nested, unique, df_updated = infer_types(df)
-# print("NUMERIC BASE FILE", numeric)
-# print("NUMERIC", numeric)
-# print("CATEGORICAL", categorical)
-# print("UNIQUE", unique)
-# range_vals = get_quant_range(df, numeric)
-# collection_name = store_in_mongodb(df_updated, filename)
-
-# # TEST REQ 1: GET EXAMPLE QUERIES USING TEMPLATE
-# get_sample_mongo_gen(categorical, numeric, unique, range_vals, collection_name)
-
-# TEST REQ 2: GET EXAMPLE QUERY(S) USING TEMPLATE WITH SPECIFIC LANGUAGE CONSTRUCTS
-# user_query = "Please provide sample queries using aggregate"
-# user_query2 = "Please provide a sample query using find"
-# user_query3 = "Please provide a sample query using meow"
-# tokens_agg = process_input(user_query)
-# tokens_find = process_input(user_query2)
-# tokens_wrong = process_input(user_query3)
-# get_sample_mongo_specific(tokens_agg, categorical, numeric, unique, range_vals, collection_name)
-# get_sample_mongo_specific(tokens_find, categorical, numeric, unique, range_vals, collection_name)
-# get_sample_mongo_specific(tokens_wrong, categorical, numeric, unique, range_vals, collection_name)
-
-# TEST REQ 3: GET QUERY FROM NATURAL LANGUAGE
-# input = "Counts for pokemon in type_1 category"
-# tokens = process_input(input)
-# print(tokens)
-# get_mongo_queries_nat(tokens, categorical, numeric, unique, range_vals, collection_name)
-
-
-# NEXT STEP, COMBINING QUERIES!!!!!
