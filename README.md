@@ -1,6 +1,6 @@
-**ChatDB**
+# ChatDB
 
-**master_chatdb.py is the main application file for interacting with datasets through natural language queries. It uses NLP to convert your input into SQL or MongoDB queries, returning results instantly.**
+## master_chatdb.py is the main application file for interacting with datasets through natural language queries. It uses NLP to convert your input into SQL or MongoDB queries, returning results instantly.
 
 **Quick Start**
 **Clone & Install:**
@@ -29,7 +29,7 @@ View queries and results directly in the browser.
 
 Click here to open the hosted Streamlit app: https://dsci551project-ggthrcj6wsvlvoch2d2lvd.streamlit.app/
 
-**Example Inputs**
+## Example Inputs
 - MySQL
     - Furniture Dataset:
         1. example sql query
@@ -63,3 +63,19 @@ Click here to open the hosted Streamlit app: https://dsci551project-ggthrcj6wsvl
     - Used car dataset:
         1. Please give total age by model
         2. Please give average age by brand and sort by average age in descending order
+
+## File Structure
+- CSV Data (the csv data we used to test our sql portion)
+    - CarPrice_Assignment.csv
+    - Furniture.csv
+    - uber.csv
+- JSON Data (the json data we used to test our mongo portion)
+    - furniture.json
+    - pokedex.json
+    - used_car.json
+- chatdb.py (development file to test components of master_chatdb.py)
+- master_chatdb.py (main file, the one used to run the main app)
+- mongo_queries.py (file with mongo helper functions to get general and specific sample queries, as well as natural language queries)
+- README.md
+- requirements.txt (contains the requirements to run this project)
+- sql_queries.py (file with sql helper functions for sample queries)
