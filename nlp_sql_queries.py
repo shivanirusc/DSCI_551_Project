@@ -1,3 +1,15 @@
+import streamlit as st
+import pandas as pd
+import sqlite3
+from pymongo import MongoClient
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+import os
+import re
+from streamlit_extras.stylable_container import stylable_container
+
 def generate_sql_query(user_input, uploaded_columns, table_name, data):
     # Step 1: Process the input query using NLP processing (basic tokenization and stemming)
     tokens = process_input(user_input)
